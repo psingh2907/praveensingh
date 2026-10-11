@@ -27,6 +27,9 @@ export const site = {
   // "Developer" is how most people search for the role, so the page title
   // and search snippets use it; the rest of the site says "Engineer".
   searchTitle: "Praveen Singh, Senior React Native Developer (iOS and Android)",
+  // Google Analytics 4 Measurement ID (see src/components/analytics.tsx).
+  // Not a secret: it's in every page's requests.
+  gaId: "G-7DSJS5TTGJ",
   // Bump when the content changes; the sitemap reports it to search engines.
   updated: "2026-09-30",
 };

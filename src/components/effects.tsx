@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 // What counts as the visitor starting to use the page.
-const firstUse = ["scroll", "wheel", "touchstart", "pointerdown", "pointermove", "keydown"] as const;
+export const firstUse = ["scroll", "wheel", "touchstart", "pointerdown", "pointermove", "keydown"] as const;
 
 let loaded: Promise<typeof import("@/lib/effects")> | undefined;
 

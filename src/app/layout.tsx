@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@/components/analytics";
 import { JsonLd } from "@/components/json-ld";
 import { site } from "@/content";
 import { bootScript } from "@/lib/desktop";
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Who this site is about, on every page. */}
         <JsonLd nodes={[person, website]} />
         {children}
+        <Analytics />
       </body>
     </html>
   );
