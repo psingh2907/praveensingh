@@ -31,6 +31,17 @@ export async function GET() {
     "",
     ...projects.map((p) => `- [${p.name}](${absolute(caseStudyPath(p))}): ${p.summary}`),
     "",
+    "## Open source",
+    "",
+    ...projects.flatMap(({ name, openSource: os }) =>
+      os
+        ? [
+            `- ${name}: [GitHub](${os.repo})${os.npm ? ` · [npm](${os.npm})` : ""}${os.docs ? ` · [Docs](${os.docs})` : ""} (${os.license})`,
+          ]
+        : [],
+    ),
+    ...posts.flatMap((p) => (p.repo ? [`- [${new URL(p.repo).pathname.slice(1)}](${p.repo}): lab repo for "${p.title}"`] : [])),
+    "",
     "## Blog",
     "",
     `- [All posts](${absolute("/blog")}) · [RSS](${absolute("/blog/rss.xml")}) · [Every post in full](${absolute("/llms-full.txt")})`,

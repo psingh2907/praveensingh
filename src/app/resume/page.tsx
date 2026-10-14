@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DownloadSimple } from "@phosphor-icons/react/ssr";
+import { livePosts } from "@/blog";
 import { JsonLd } from "@/components/json-ld";
 import { PageShell } from "@/components/page-shell";
 import { about, certifications, education, experience, projects, site, stack } from "@/content";
@@ -15,7 +16,10 @@ export const metadata: Metadata = pageMetadata({ title, description, path: "/res
 
 const heading = "text-xs font-medium uppercase tracking-[0.18em] text-accent";
 
-export default function Resume() {
+export default async function Resume() {
+  const labs = (await livePosts()).filter((p) => p.repo);
+  const openSource = projects.filter((p) => p.openSource);
+
   return (
     <PageShell
       title={site.resume.split("/").pop()!.replace(".pdf", "")}
@@ -107,18 +111,66 @@ export default function Resume() {
         <section className="mt-10">
           <h2 className={heading}>Selected projects</h2>
           <ul className="mt-4 space-y-3">
-            {projects.map((p) => (
+            {projects
+              .filter((p) => !p.openSource)
+              .map((p) => (
+                <li key={p.slug}>
+                  <Link href={caseStudyPath(p)} className="font-semibold text-accent hover:underline">
+                    {p.name}
+                  </Link>
+                  <span className="text-muted">
+                    {" "}
+                    · {p.company}, {p.year}
+                  </span>
+                  <p className="leading-relaxed text-muted">{p.summary}</p>
+                </li>
+              ))}
+          </ul>
+        </section>
+
+        <section className="mt-10">
+          <h2 className={heading}>Open source</h2>
+          <ul className="mt-4 space-y-3">
+            {openSource.map((p) => (
               <li key={p.slug}>
                 <Link href={caseStudyPath(p)} className="font-semibold text-accent hover:underline">
                   {p.name}
                 </Link>
                 <span className="text-muted">
                   {" "}
-                  · {p.company}, {p.year}
+                  · <a href={p.openSource!.repo} className="hover:text-text">GitHub</a>
+                  {p.openSource!.npm && (
+                    <>
+                      , <a href={p.openSource!.npm} className="hover:text-text">npm</a>
+                    </>
+                  )}
+                  , {p.openSource!.license}
                 </span>
                 <p className="leading-relaxed text-muted">{p.summary}</p>
               </li>
             ))}
+            {labs.length > 0 && (
+              <li>
+                <span className="font-semibold">Lab repos</span>
+                <span className="text-muted"> · code and raw results behind the blog posts</span>
+                <ul className="mt-1 space-y-0.5 text-sm">
+                  {labs.map((p) => (
+                    <li key={p.slug}>
+                      <a href={p.repo} className="font-mono text-accent hover:underline">
+                        {new URL(p.repo!).pathname.slice(1)}
+                      </a>
+                      <span className="text-muted">
+                        {" "}
+                        ·{" "}
+                        <Link href={`/blog/${p.slug}`} className="hover:text-text">
+                          {p.title}
+                        </Link>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            )}
           </ul>
         </section>
 

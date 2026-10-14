@@ -1,12 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, BluetoothConnected, ContactlessPayment, CreditCard, Info } from "@phosphor-icons/react/ssr";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BluetoothConnected,
+  CloudSlash,
+  ContactlessPayment,
+  CreditCard,
+  Info,
+  Robot,
+  RocketLaunch,
+} from "@phosphor-icons/react/ssr";
 import { AppGallery } from "@/components/app-gallery";
 import { JsonLd } from "@/components/json-ld";
+import { InstallCommands, OpenSourceLinks } from "@/components/open-source";
 import { PageShell } from "@/components/page-shell";
 import { experience, projects, site } from "@/content";
-import { absolute, breadcrumbs, caseStudyPath, ids, pageMetadata } from "@/lib/seo";
+import { absolute, breadcrumbs, caseStudyPath, ids, pageMetadata, softwareSourceCode } from "@/lib/seo";
 
 // One page per project, built from content.ts at build time. A slug that
 // isn't a project is a 404.
@@ -27,7 +38,14 @@ export async function generateMetadata({ params }: PageProps<"/work/[slug]">): P
   return pageMetadata({ title, description, path: caseStudyPath(project), type: "article" });
 }
 
-const capabilityIcons = { payments: CreditCard, nfc: ContactlessPayment, ble: BluetoothConnected };
+const capabilityIcons = {
+  payments: CreditCard,
+  nfc: ContactlessPayment,
+  ble: BluetoothConnected,
+  offline: CloudSlash,
+  agents: Robot,
+  release: RocketLaunch,
+};
 
 const heading = "text-xs font-medium uppercase tracking-[0.18em] text-accent";
 
@@ -43,7 +61,9 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
   const image = project.apps?.[0]?.screenshots[0]?.src;
 
   const facts = [
-    { label: "Company", value: project.company },
+    project.openSource
+      ? { label: "Licence", value: `${project.openSource.license}, maintained by ${site.name}` }
+      : { label: "Company", value: project.company },
     ...(job ? [{ label: "Role", value: `${job.title}, ${job.start} to ${job.end}` }] : []),
     { label: "Industry", value: project.domain },
     { label: "Platforms", value: project.platforms },
@@ -73,13 +93,15 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
             dateModified: site.updated,
             ...(image && { image: absolute(image) }),
             keywords: project.stack.join(", "),
-            about: (project.apps ?? []).map((app) => ({
-              "@type": "MobileApplication",
-              name: app.name,
-              applicationCategory: app.category,
-              operatingSystem: [app.ios && "iOS", app.android && "Android"].filter(Boolean).join(", "),
-              url: app.ios ?? app.android,
-            })),
+            about: project.openSource
+              ? [softwareSourceCode(project)]
+              : (project.apps ?? []).map((app) => ({
+                  "@type": "MobileApplication",
+                  name: app.name,
+                  applicationCategory: app.category,
+                  operatingSystem: [app.ios && "iOS", app.android && "Android"].filter(Boolean).join(", "),
+                  url: app.ios ?? app.android,
+                })),
           },
           breadcrumbs([
             { name: "Home", path: "/" },
@@ -176,6 +198,19 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
             <Info size={16} weight="bold" aria-hidden className="mt-0.5 shrink-0" />
             {project.retired ?? project.note}
           </p>
+        )}
+
+        {project.openSource && (
+          <section className="mt-12">
+            <h2 className={heading}>Get it</h2>
+            <p className="mt-3 max-w-[62ch] text-muted">
+              Free under the {project.openSource.license} licence. The website has the full quick start and docs.
+            </p>
+            <InstallCommands lines={project.openSource.install} className="mt-4 max-w-2xl" />
+            <div className="mt-4">
+              <OpenSourceLinks project={project.openSource} />
+            </div>
+          </section>
         )}
 
         {project.apps && (

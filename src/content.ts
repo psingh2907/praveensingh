@@ -31,7 +31,7 @@ export const site = {
   // Not a secret: it's in every page's requests.
   gaId: "G-7DSJS5TTGJ",
   // Bump when the content changes; the sitemap reports it to search engines.
-  updated: "2026-09-30",
+  updated: "2026-10-14",
 };
 
 // Shown in the hero phone's Dynamic Island and the desktop notification.
@@ -105,7 +105,24 @@ export type Project = {
   /** Context shown under the summary, without the "Retired" badge. */
   note?: string;
   /** What was built, for work that can't be shown app by app (e.g. agency clients). */
-  capabilities?: { icon: "payments" | "nfc" | "ble"; title: string; body: string }[];
+  capabilities?: {
+    icon: "payments" | "nfc" | "ble" | "offline" | "agents" | "release";
+    title: string;
+    body: string;
+  }[];
+  /**
+   * Praveen's own open-source work: where to get it. The card shows the
+   * install commands instead of a phone, and the case study a "Get it"
+   * section; `company` reads "Open source".
+   */
+  openSource?: {
+    repo: string;
+    npm?: string;
+    docs?: string;
+    license: string;
+    /** The quick start, one command per line, exactly as the project's README has it. */
+    install: string[];
+  };
   metrics?: Metric[];
   href?: string;
   /**
@@ -280,6 +297,54 @@ export const projects: Project[] = [
         ]),
       },
     ],
+  },
+  {
+    slug: "bareship",
+    name: "Bareship",
+    company: "Open source",
+    domain: "Open source",
+    summary:
+      "My open-source React Native template, on npm and as a GitHub template. Bare and offline first: queued writes survive a restart, Firebase is optional, and the architecture rules fail the build when they're broken.",
+    searchTitle: "Bareship: an open-source React Native template",
+    searchDescription:
+      "Bareship is Praveen Singh's open-source bare React Native template: an offline write queue, optional Firebase, fastlane releases and rules for AI agents.",
+    challenge:
+      "A production bare React Native app needs weeks of plumbing before its first feature: offline writes, token storage, environments and release builds. Most templates leave that out, and give coding agents no rules to follow.",
+    platforms: "iOS and Android",
+    stack: ["React Native", "TypeScript", "TanStack Query", "MMKV", "Fastlane"],
+    year: "2026",
+    capabilities: [
+      {
+        icon: "offline",
+        title: "Offline writes",
+        body: "Four offline patterns. Queued writes survive a restart and replay in order.",
+      },
+      {
+        icon: "agents",
+        title: "Built for AI agents",
+        body: "AGENTS.md, ADRs and agent skills give coding agents the team's rules.",
+      },
+      {
+        icon: "release",
+        title: "Ready to release",
+        body: "Three environments, optional Firebase, and fastlane lanes for TestFlight and Play.",
+      },
+    ],
+    note: "Version 0.1.0, released October 2026. An app made from the npm package builds and runs on iOS and Android, and release builds pass on both.",
+    openSource: {
+      repo: "https://github.com/psingh2907/bareship",
+      npm: "https://www.npmjs.com/package/bareship",
+      docs: "https://bareship.praveensingh.co.in",
+      license: "MIT",
+      install: [
+        "npx @react-native-community/cli@20.2.0 init Acme --template bareship --skip-install --install-pods false",
+        "cd Acme",
+        "pnpm install",
+        "bundle install",
+        'pnpm bootstrap --name Acme --bundle-id com.acme.app --display-name "Acme"',
+        "pnpm ios",
+      ],
+    },
   },
 ];
 
@@ -476,6 +541,11 @@ export const faq = [
     question: "What results has Praveen delivered?",
     answer:
       "At upGrad, Praveen cut median cold start from 2.9s to 1.8s and the release cycle from 5 days to 3. On the Reevo credit card app, API responses got about 30% faster with Apollo caching and frame drops fell from 9.2% to 3.8%.",
+  },
+  {
+    question: "Does Praveen Singh maintain open-source projects?",
+    answer:
+      "Yes. Praveen maintains Bareship, an open-source bare React Native template published on npm as bareship and on GitHub at github.com/psingh2907/bareship, with docs at bareship.praveensingh.co.in. His blog posts also come with public lab repos holding the code and raw results.",
   },
   {
     question: "How do I contact Praveen Singh?",

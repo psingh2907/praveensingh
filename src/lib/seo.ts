@@ -113,6 +113,27 @@ export function pageMetadata({
 
 export const caseStudyPath = (project: Project) => `/work/${project.slug}`;
 
+/** An open-source project as code (schema.org SoftwareSourceCode), authored by Praveen. */
+export function softwareSourceCode(project: Project) {
+  const os = project.openSource!;
+  return {
+    "@type": "SoftwareSourceCode",
+    // Same @id the project's own site uses, so both describe one entity.
+    "@id": `${os.docs ?? os.repo}/#software`,
+    name: project.name,
+    // The summary is in the first person; the search description isn't.
+    description: project.searchDescription ?? project.summary,
+    codeRepository: os.repo,
+    url: os.docs ?? os.repo,
+    ...(os.npm && { sameAs: [os.npm] }),
+    programmingLanguage: "TypeScript",
+    runtimePlatform: "React Native",
+    license: `https://spdx.org/licenses/${os.license}.html`,
+    author: { "@id": ids.person },
+    keywords: project.stack.join(", "),
+  };
+}
+
 export function breadcrumbs(items: { name: string; path: string }[]) {
   return {
     "@type": "BreadcrumbList",
