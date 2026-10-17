@@ -13,6 +13,7 @@ import { Faq } from "@/components/faq";
 import { Hero } from "@/components/hero";
 import { JsonLd } from "@/components/json-ld";
 import { MenuBar } from "@/components/menu-bar";
+import { OpenSourceWork } from "@/components/open-source-window";
 import { Process } from "@/components/process";
 import { Recommendations } from "@/components/recommendations";
 import { SiteFooter } from "@/components/site-footer";
@@ -43,7 +44,8 @@ export default async function Home() {
       {/* Windows are staggered on wider screens so it reads like a desktop. */}
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-3 pb-32 pt-12 md:gap-12 md:px-6 md:pt-16">
         <Hero />
-        <Work labs={posts.flatMap(({ slug, title, repo }) => (repo ? [{ slug, title, repo }] : []))} />
+        <Work />
+        <OpenSourceWork labs={posts.flatMap(({ slug, title, repo }) => (repo ? [{ slug, title, repo }] : []))} />
         <Experience />
         <Stack />
         <Terminal className="md:w-[72%] md:self-start" />

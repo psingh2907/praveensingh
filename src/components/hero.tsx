@@ -1,4 +1,4 @@
-import { hero, site } from "@/content";
+import { hero, projects, site } from "@/content";
 import { LiveIsland } from "./live-island";
 import { Phone } from "./phone";
 import { Window } from "./window";
@@ -6,6 +6,9 @@ import { Window } from "./window";
 // The phones drift and tilt as you scroll (data-parallax, lib/effects.ts), and
 // the tagline decodes on a first visit (data-scramble).
 export function Hero() {
+  // Praveen's own open-source work, with the live version from npm (content.ts).
+  const maintaining = projects.find((p) => p.openSource?.version);
+
   // The entrance is CSS (.rise in globals.css), so it starts at first paint
   // instead of after hydration. It slides without fading: the headline and
   // subtext are the page's largest paint, and browsers don't count text
@@ -51,6 +54,21 @@ export function Hero() {
               Get in touch
             </a>
           </div>
+          {maintaining && (
+            <a
+              href="#open-source"
+              style={enter(0.3)}
+              className="rise mt-6 inline-flex max-w-full items-center gap-2 rounded-full border border-hairline px-3.5 py-1.5 text-sm transition-colors hover:bg-accent-soft"
+            >
+              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-[#28c840]" />
+              <span className="text-muted">Maintaining</span>
+              <span className="font-semibold">{maintaining.name}</span>
+              <span className="rounded-full bg-accent-soft px-2 py-px text-xs font-semibold text-accent tabular-nums">
+                v{maintaining.openSource!.version}
+              </span>
+              <span className="hidden truncate text-muted sm:inline">· my open-source React Native template</span>
+            </a>
+          )}
         </div>
 
         <div className="relative mx-auto -mb-24 h-[400px] w-full max-w-[400px] md:h-[520px] lg:col-span-5 lg:h-[560px] lg:self-end">

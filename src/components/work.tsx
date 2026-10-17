@@ -14,8 +14,6 @@ import {
   ContactlessPayment,
   Cpu,
   CreditCard,
-  GitBranch,
-  GithubLogo,
   GraduationCap,
   Info,
   Robot,
@@ -24,13 +22,16 @@ import {
   type Icon,
 } from "@phosphor-icons/react";
 import { projects, type Project } from "@/content";
-import { InstallCommands, OpenSourceLinks } from "./open-source";
 import { Phone } from "./phone";
 import { Lightbox, ScreenshotStrip, StoreList } from "./store-apps";
 import { Window } from "./window";
 
+// Client and employer apps only: open-source work has its own window
+// (open-source-window.tsx), so recruiters can tell the two apart.
+const clientProjects = projects.filter((p) => !p.openSource);
+
 // Finder-style sidebar filters, one per industry.
-const filters = ["All", ...new Set(projects.map((p) => p.domain))];
+const filters = ["All", ...new Set(clientProjects.map((p) => p.domain))];
 type Filter = string;
 
 const matches = (project: Project, filter: Filter) => filter === "All" || project.domain === filter;
@@ -43,7 +44,6 @@ const filterIcons: Record<string, Icon> = {
   Operations: ClipboardText,
   Telecom: CellTower,
   "IoT and Commerce": Cpu,
-  "Open source": GitBranch,
 };
 
 // Corner tags on a card's image area ("Retired", "Illustration").
@@ -188,8 +188,6 @@ function ProjectCard({ project }: { project: Project }) {
             sizes="190px"
             className="mt-6 w-[190px] shrink-0 self-start"
           />
-        ) : project.openSource ? (
-          <InstallCommands lines={project.openSource.install} className="mx-6 mt-6 self-start" />
         ) : (
           project.placeholder && <Placeholder {...project.placeholder} />
         )}
@@ -223,11 +221,6 @@ function ProjectCard({ project }: { project: Project }) {
           Read the case study<span className="sr-only">: {project.name}</span>
           <ArrowRight size={14} weight="bold" aria-hidden />
         </Link>
-        {project.openSource && (
-          <div className="mt-4">
-            <OpenSourceLinks project={project.openSource} />
-          </div>
-        )}
         {project.capabilities && (
           <ul className="mt-5 divide-y divide-hairline rounded-xl bg-surface-2">
             {project.capabilities.map(({ icon, title, body }) => {
@@ -283,13 +276,10 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
-/** A blog post's public lab repo (PostMeta.repo). */
-export type Lab = { slug: string; title: string; repo: string };
-
-export function Work({ labs }: { labs: Lab[] }) {
+export function Work() {
   const [filter, setFilter] = useState<Filter>("All");
   const reduce = useReducedMotion();
-  const shown = projects.filter((p) => matches(p, filter));
+  const shown = clientProjects.filter((p) => matches(p, filter));
 
   const filterButton = (f: Filter, className: string) => {
     const FilterIcon = filterIcons[f] ?? SquaresFour;
@@ -304,7 +294,7 @@ export function Work({ labs }: { labs: Lab[] }) {
         <FilterIcon size={17} aria-hidden className="sidebar-icon mr-2 shrink-0" />
         {f}
         <span className="ml-auto pl-3 text-xs tabular-nums text-muted">
-          {projects.filter((p) => matches(p, f)).length}
+          {clientProjects.filter((p) => matches(p, f)).length}
         </span>
       </button>
     );
@@ -328,8 +318,8 @@ export function Work({ labs }: { labs: Lab[] }) {
         <div className="min-w-0 flex-1 p-4 md:p-8">
           <h2 data-split className="text-3xl font-semibold tracking-tighter md:text-4xl">Selected work</h2>
           <p className="mt-2 max-w-[60ch] text-muted">
-            Production apps for Android and iOS, and my open-source template. Numbers are from release builds and
-            production telemetry.
+            Production apps for Android and iOS, built for the companies and clients I&apos;ve worked with. Numbers are
+            from release builds and production telemetry.
           </p>
 
           {/* Phones get the sidebar as a scrolling segmented control instead. */}
@@ -361,27 +351,6 @@ export function Work({ labs }: { labs: Lab[] }) {
             </AnimatePresence>
           </motion.ul>
 
-          {labs.length > 0 && (filter === "All" || filter === "Open source") && (
-            <section className="mt-8">
-              <h3 className="text-lg font-semibold tracking-tight">Lab repos</h3>
-              <p className="mt-1 text-sm text-muted">The code and raw results behind my blog posts.</p>
-              <ul className="mt-3 divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-surface">
-                {labs.map((lab) => (
-                  <li key={lab.repo} className="flex gap-3 px-4 py-3">
-                    <GithubLogo size={18} aria-hidden className="mt-0.5 shrink-0 text-muted" />
-                    <div className="min-w-0">
-                      <a href={lab.repo} className="font-mono text-[13px] font-medium text-accent hover:underline">
-                        {new URL(lab.repo).pathname.slice(1)}
-                      </a>
-                      <Link href={`/blog/${lab.slug}`} className="mt-0.5 block text-sm text-muted hover:text-text">
-                        {lab.title}
-                      </Link>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
       </div>
       <p className="border-t border-hairline px-4 py-2 text-center text-xs text-muted">

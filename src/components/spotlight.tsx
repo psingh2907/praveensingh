@@ -18,6 +18,7 @@ import {
   DropHalf,
   EnvelopeSimple,
   FilePdf,
+  GitBranch,
   GithubLogo,
   GooglePlayLogo,
   House,
@@ -47,6 +48,7 @@ const external = (url: string) => () => window.open(url, "_blank", "noopener");
 const items: Item[] = [
   { group: "Windows", label: "Welcome", Icon: House, keywords: "home top intro", run: () => openWindow("top") },
   { group: "Windows", label: "Selected Work", Icon: AppWindow, keywords: "projects apps portfolio finder", run: () => openWindow("work") },
+  { group: "Windows", label: "Open Source", Icon: GitBranch, keywords: "bareship github npm template repos labs code", run: () => openWindow("open-source") },
   { group: "Windows", label: "Experience", Icon: FilePdf, keywords: "resume cv jobs career upgrad gojoko delightree invia webmobril", run: () => openWindow("experience") },
   { group: "Windows", label: "Tools", Icon: Wrench, keywords: "stack skills launchpad", run: () => openWindow("tools") },
   { group: "Windows", label: "Terminal", Icon: TerminalWindow, keywords: "shell zsh cli", run: () => openWindow("terminal") },
@@ -62,7 +64,7 @@ const items: Item[] = [
     hint: p.retired ? `${p.company} · retired` : p.company,
     keywords: `${p.domain} ${p.summary} ${p.stack.join(" ")}`,
     Icon: DeviceMobile,
-    run: () => openWindow("work"),
+    run: () => openWindow(p.openSource ? "open-source" : "work"),
   })),
   ...projects.map((p) => ({
     group: "Case studies",
