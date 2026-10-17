@@ -6,6 +6,16 @@
 // `placeholder`; real screenshots can replace it via `screen` (drop them in
 // /public/work). The hero phones use Praveen's own screenshots (/public/hero).
 
+// Bareship's latest npm release, written by scripts/bareship-release.mjs
+// before every dev run and build.
+import bareshipRelease from "./generated/bareship-release.json";
+
+const bareshipReleased = new Date(bareshipRelease.released).toLocaleDateString("en-IN", {
+  month: "long",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
+
 export const site = {
   name: "Praveen Singh",
   // The live domain. Canonical URLs, the sitemap and structured data are
@@ -120,6 +130,8 @@ export type Project = {
     npm?: string;
     docs?: string;
     license: string;
+    /** The latest published version. */
+    version?: string;
     /** The quick start, one command per line, exactly as the project's README has it. */
     install: string[];
   };
@@ -330,8 +342,9 @@ export const projects: Project[] = [
         body: "Three environments, optional Firebase, and fastlane lanes for TestFlight and Play.",
       },
     ],
-    note: "Version 0.1.0, released October 2026. An app made from the npm package builds and runs on iOS and Android, and release builds pass on both.",
+    note: `Version ${bareshipRelease.version}, released ${bareshipReleased}. An app made from the npm package builds and runs on iOS and Android, and release builds pass on both.`,
     openSource: {
+      version: bareshipRelease.version,
       repo: "https://github.com/psingh2907/bareship",
       npm: "https://www.npmjs.com/package/bareship",
       docs: "https://bareship.praveensingh.co.in",

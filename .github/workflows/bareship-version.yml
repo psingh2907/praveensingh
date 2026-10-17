@@ -1,0 +1,31 @@
+# The daily fallback for the Bareship version on the site. Bareship's release workflow starts a deploy as
+# soon as a version is out; if that run failed or was skipped, this one notices the live site is behind npm
+# and starts a deploy itself. It only deploys when the versions differ.
+#
+# Needs the repository secret VERCEL_DEPLOY_HOOK: a Vercel Deploy Hook for the main branch.
+name: Bareship version
+
+on:
+  schedule:
+    - cron: "30 3 * * *" # 09:00 IST
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Deploy if the site is behind npm
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          latest=$(curl -fsS https://registry.npmjs.org/bareship/latest | jq -r .version)
+          # llms.txt lists "- Bareship <version>: ..." and is built from the same data as the case study.
+          live=$(curl -fsS https://www.praveensingh.co.in/llms.txt | sed -n 's/^- Bareship \([0-9][^:]*\):.*/\1/p')
+          echo "npm: $latest, site: ${live:-unknown}"
+          if [ "$latest" = "$live" ]; then exit 0; fi
+          if [ -z "$HOOK" ]; then echo "::error::The VERCEL_DEPLOY_HOOK secret isn't set"; exit 1; fi
+          curl -fsS -X POST "$HOOK"
+          echo "Started a deploy for Bareship $latest"

@@ -36,7 +36,7 @@ export async function GET() {
     ...projects.flatMap(({ name, openSource: os }) =>
       os
         ? [
-            `- ${name}: [GitHub](${os.repo})${os.npm ? ` · [npm](${os.npm})` : ""}${os.docs ? ` · [Docs](${os.docs})` : ""} (${os.license})`,
+            `- ${name}${os.version ? ` ${os.version}` : ""}: [GitHub](${os.repo})${os.npm ? ` · [npm](${os.npm})` : ""}${os.docs ? ` · [Docs](${os.docs})` : ""} (${os.license})`,
           ]
         : [],
     ),

@@ -42,3 +42,6 @@ next-env.d.ts
 
 # code-review-graph
 /.code-review-graph
+
+# written by scripts/bareship-release.mjs before dev and build
+/src/generated

@@ -126,6 +126,7 @@ export function softwareSourceCode(project: Project) {
     codeRepository: os.repo,
     url: os.docs ?? os.repo,
     ...(os.npm && { sameAs: [os.npm] }),
+    ...(os.version && { version: os.version }),
     programmingLanguage: "TypeScript",
     runtimePlatform: "React Native",
     license: `https://spdx.org/licenses/${os.license}.html`,
