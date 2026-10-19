@@ -349,14 +349,7 @@ export const projects: Project[] = [
       npm: "https://www.npmjs.com/package/bareship",
       docs: "https://bareship.praveensingh.co.in",
       license: "MIT",
-      install: [
-        "npx @react-native-community/cli@20.2.0 init Acme --template bareship --skip-install --install-pods false",
-        "cd Acme",
-        "pnpm install",
-        "bundle install",
-        'pnpm bootstrap --name Acme --bundle-id com.acme.app --display-name "Acme"',
-        "pnpm ios",
-      ],
+      install: ["npx create-bareship Acme", "cd Acme", "pnpm ios"],
     },
   },
 ];
