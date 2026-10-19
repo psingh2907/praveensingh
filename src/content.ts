@@ -346,7 +346,7 @@ export const projects: Project[] = [
     openSource: {
       version: bareshipRelease.version,
       repo: "https://github.com/psingh2907/bareship",
-      npm: "https://www.npmjs.com/package/bareship",
+      npm: "https://www.npmjs.com/package/create-bareship",
       docs: "https://bareship.praveensingh.co.in",
       license: "MIT",
       install: ["npx create-bareship Acme", "cd Acme", "pnpm ios"],
@@ -551,7 +551,7 @@ export const faq = [
   {
     question: "Does Praveen Singh maintain open-source projects?",
     answer:
-      "Yes. Praveen maintains Bareship, an open-source bare React Native template published on npm as bareship and on GitHub at github.com/psingh2907/bareship, with docs at bareship.praveensingh.co.in. His blog posts also come with public lab repos holding the code and raw results.",
+      "Yes. Praveen maintains Bareship, an open-source bare React Native template published on npm (create an app with npx create-bareship) and on GitHub at github.com/psingh2907/bareship, with docs at bareship.praveensingh.co.in. His blog posts also come with public lab repos holding the code and raw results.",
   },
   {
     question: "How do I contact Praveen Singh?",
