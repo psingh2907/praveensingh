@@ -1,0 +1,137 @@
+export const meta = {
+  title: "Bareship: an offline-first React Native template for teams and AI agents",
+  description:
+    "Why I built Bareship, a bare React Native 0.87 template with offline writes that survive a restart, an architecture the linter enforces, and rules your AI coding agent follows. It runs with no accounts.",
+  published: "2026-10-22",
+  tags: ["React Native", "Open source", "Offline-first"],
+  platforms: ["iOS", "Android"],
+  seoTitle: "Bareship: offline-first React Native template",
+  seoDescription:
+    "Bareship is a free, bare React Native 0.87 template: offline writes that survive a restart, an enforced architecture and AI-agent rules. No accounts needed.",
+  repo: "https://github.com/psingh2907/bareship",
+  mentions: [
+    { name: "Bareship", url: "https://bareship.praveensingh.co.in" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+    { name: "TanStack Query", url: "https://tanstack.com/query" },
+    { name: "Claude Code", url: "https://claude.com/claude-code" },
+  ],
+};
+
+<ShortAnswer>
+  Bareship is a free, MIT-licensed template for bare React Native 0.87 apps. One command, `npx create-bareship
+  Acme`, gives you an iOS and Android app where a like or an edit made offline is saved, survives a restart and is
+  sent once when the phone reconnects; where the folder rules are checked by ESLint instead of code review; and
+  where Claude Code, Cursor or Copilot get the same rules as your team. It runs with no backend, Firebase project
+  or Apple account until you need them.
+</ShortAnswer>
+
+<video
+  src="/blog/introducing-bareship/offline-sync.mp4"
+  poster="/blog/introducing-bareship/offline-sync.jpg"
+  width="1080"
+  height="1920"
+  controls
+  muted
+  playsInline
+  preload="none"
+  aria-label="On Android: airplane mode on, a like is saved and marked Waiting to sync, then sent when the phone is back online"
+  style={{ display: "block", width: "100%", maxWidth: 360, height: "auto", margin: "0 auto", borderRadius: 12 }}
+/>
+
+## Why another template?
+
+Every new React Native app I've started began the same way: a week or two rebuilding the plumbing before the
+first real feature. A queue for writes made without signal, somewhere safe for the auth token, folder rules
+everyone agrees on and nobody checks. Each time I built them a little differently, and each time the gaps showed
+up later, in a bug report from a user with a bad connection or in a feature folder that had quietly started
+importing from three others. I wanted to make those decisions once, properly, and start from there.
+
+Most starters get you to a running screen fast. The parts that cost time later are the ones a demo never
+touches: what happens to a write when the phone has no signal, where the auth token lives, and whether the
+folder structure you agreed on in week one still holds in month six, with three developers and a coding agent
+all adding code. Bareship is my answer to those, decided once and written down.
+
+## What happens when the phone goes offline?
+
+Every write in the app picks one of four patterns, so a user always knows what became of what they did:
+
+| Pattern | Without a connection | Use it for |
+| --- | --- | --- |
+| A | The change appears at once and is sent later | Low-stakes toggles |
+| B | The change appears at once, marked "Waiting to sync" | Likes, comments, edits |
+| C | The form is disabled, with a note saying why | Sign-in, payments |
+| D | The content is replaced by an offline message | Account deletion, checkout |
+
+Queued writes are saved to disk, replayed in the order they were made after a restart, and carry one
+idempotency key for every attempt, so a write sent twice is applied once. A banner under the header counts the
+changes waiting to sync. A write that picks no pattern fails at once offline, so nothing is queued by accident.
+
+## Rules the build enforces
+
+The architecture is in the linter, not a wiki page. Layers import downward only, features can't reach into each
+other's files, text on screen must go through translations, and accessibility uses one set of ARIA props
+everywhere. ESLint and dependency-cruiser fail the check otherwise. When a rule is wrong for your app, you change it
+in one place and write down why: the decisions behind the template are kept as ADRs in the repo.
+
+## Built for AI coding agents
+
+The repo ships an `AGENTS.md`, its decision records and React Native agent skills, plus generators
+(`pnpm gen feature | screen | endpoint`) that write a schema, API hooks, a mock, strings and a test the way the
+rest of the code does. An agent that follows them writes code that passes the same checks as your team's.
+
+I built much of Bareship with Claude Code, so these files were tested on an agent from the start: when it broke
+a rule, the fix went into the linter or `AGENTS.md`, not into a comment on a pull request.
+
+## It runs with no accounts
+
+The dev build serves sample data from a mock backend inside the app, so you can sign in, scroll the feed and
+test offline mode on a simulator or a phone before any backend exists. Crashlytics, Analytics, Remote Config and
+push turn on when you add a Firebase file and fall back to logging without one. Tokens are stored in the
+Keychain and Keystore from day one.
+
+Also included: light and dark themes, English and Hindi (with right-to-left support you can switch on), deep
+links, force-update and maintenance screens, environments for dev, staging and prod, fastlane release lanes and
+a demo build you can install on a phone.
+
+## Try it
+
+```bash
+npx create-bareship Acme
+cd Acme
+pnpm android   # or: pnpm ios
+```
+
+`create-bareship` checks your tools first, asks for a bundle id and display name, installs everything and makes
+the first commit.
+
+<video
+  src="/blog/introducing-bareship/create-to-running.mp4"
+  poster="/blog/introducing-bareship/create-to-running.jpg"
+  width="1920"
+  height="1080"
+  controls
+  muted
+  playsInline
+  preload="none"
+  aria-label="npx create-bareship Acme in a terminal, then pnpm android, then the Acme app running on an Android emulator (sped up)"
+  style={{ display: "block", width: "100%", height: "auto", borderRadius: 12 }}
+/>
+
+The first Android build compiles the native libraries and takes a while (about 20 minutes on my 8 GB M1, a few
+minutes on a faster machine); builds after that are quick.
+
+## What's next
+
+Bareship is at 0.3.2. Next on the list: turning CI back on in the repository, and a series of posts on how the
+pieces work, starting with the offline queue and idempotency keys. If it saves you a week, a star on GitHub helps
+other people find it, and issues are the best way to tell me what's missing.
+
+<Takeaways
+  items={[
+    "npx create-bareship Acme creates a bare React Native 0.87 app for iOS and Android in one command.",
+    "Each write picks one of four offline patterns; queued writes survive a restart and are applied once.",
+    "Layers, feature boundaries, translations and accessibility are enforced by ESLint and dependency-cruiser.",
+    "AGENTS.md, ADRs, skills and generators give AI coding agents the same rules as your team.",
+    "It runs with no backend, Firebase or Apple account; you add each service when you need it.",
+  ]}
+/>
