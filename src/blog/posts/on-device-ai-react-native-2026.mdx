@@ -7,7 +7,7 @@ export const meta = {
   platforms: ["iOS", "Android"],
   seoTitle: "On-device AI in React Native, measured",
   seoDescription:
-    "Apple Foundation Models and ExecuTorch behind one AI SDK call in React Native 0.87: setup fixes, speed, and how often a 1B model returns valid JSON.",
+    "@react-native-ai/apple and React Native ExecuTorch behind one AI SDK call in React Native 0.87: setup fixes, speed, and how often each returns valid JSON.",
   repo: "https://github.com/psingh2907/rn-on-device-ai-lab",
   mentions: [
     { name: "Apple Foundation Models", url: "https://developer.apple.com/documentation/foundationmodels" },
@@ -40,7 +40,7 @@ Release posts tell you what's possible. I wanted to know what it takes, so I bui
 Everything is in [a public repo](https://github.com/psingh2907/rn-on-device-ai-lab): code, raw results and the failures.
 
 <Note title="The setup, and what I couldn't measure">
-  React Native 0.87.1, AI SDK 6, `@react-native-ai/apple` 0.12.0, `react-native-executorch` 0.10.4 running Llama 3.2
+  [React Native 0.87.1](/blog/react-native-0-87-upgrade), AI SDK 6, `@react-native-ai/apple` 0.12.0, `react-native-executorch` 0.10.4 running Llama 3.2
   1B. An Apple M1 with 8 GB of memory, the iPhone 17 simulator on iOS 26.3, **no physical devices**. ExecuTorch ran in
   the app on the simulator. Apple's model wouldn't run in the simulator (more below), so I ran the same tasks against
   it from Swift on the Mac. These are Mac numbers, not iPhone numbers: use them to compare the two engines, not to
@@ -56,7 +56,7 @@ Five store-audit notes, written the way an auditor types them on a phone:
 1. **Summary:** streamed, two sentences, most urgent issue first. I measured time to first text and total time.
 2. **Checklist:** structured output, validated against a Zod schema with `generateObject`. One item per issue, each with an area, an issue and a severity of `low`, `medium` or `high`. 10 runs per engine, per run of the benchmark.
 
-## One call site for both engines
+## One call site: @react-native-ai/apple and React Native ExecuTorch
 
 Apple's model already has an AI SDK provider. ExecuTorch doesn't, so I wrote a small adapter. Version 0.10 makes this easier: below the `useLLMChatSession` hook it exposes the runner and the model's chat template as separate pieces.
 

@@ -132,9 +132,9 @@ With it, my 16 errors dropped to **6**. The 6 that remain are APIs that were rem
 
 Metro doesn't type-check, so here's how the removed APIs behave if you ship without fixing the types.
 
-### `InteractionManager` is gone, and that's a crash
+### `InteractionManager.runAfterInteractions` is removed, and that's a crash
 
-`InteractionManager` isn't exported any more, so `InteractionManager.runAfterInteractions(...)` throws at runtime. The release notes point to `requestIdleCallback`:
+`InteractionManager` was deprecated before 0.87 and isn't exported any more, so `InteractionManager.runAfterInteractions(...)` throws at runtime. The release notes point to `requestIdleCallback`:
 
 ```diff title="src/screens/ChecklistScreen.tsx"
   useEffect(() => {
@@ -263,6 +263,10 @@ The speed-up grows with the size of the app: barely noticeable on a small one, c
 **Yes, if you're on 0.86.** The type errors are mechanical, the template diff is small, and the work transfers directly to 0.88, already at release candidate 3 as I write this. Budget an afternoon for a mid-size app, plus a check of your dependencies.
 
 **Wait a little if** you rely on libraries that deep-import heavily and haven't released Strict-API-ready versions, or if you can't test the edge-to-edge change on Android yet. The Android build itself is unlikely to hold you up: it worked from the template diff alone.
+
+I've since used the same app on 0.87 to [compare Argent and agent-device](/blog/coding-agents-drive-the-simulator),
+and built an [on-device AI lab](/blog/on-device-ai-react-native-2026) on it, which needed one more 0.87 fix in
+`react-native-executorch`.
 
 <Takeaways
   items={[

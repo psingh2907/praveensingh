@@ -65,6 +65,8 @@ Every write in the app picks one of four patterns, so a user always knows what b
 Queued writes are saved to disk, replayed in the order they were made after a restart, and carry one
 idempotency key for every attempt, so a write sent twice is applied once. A banner under the header counts the
 changes waiting to sync. A write that picks no pattern fails at once offline, so nothing is queued by accident.
+For the reasoning behind queues, idempotency keys and conflicts, see my
+[offline-first data layer post](/blog/offline-first-react-native-data-layer).
 
 ## Rules the build enforces
 

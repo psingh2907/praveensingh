@@ -32,6 +32,21 @@ export const meta = {
   project files patched first.
 </ShortAnswer>
 
+## Argent vs agent-device: the quick answer
+
+| | Argent | agent-device |
+| --- | --- | --- |
+| Made by | Software Mansion | Callstack |
+| How the agent uses it | MCP server, skills and rules (`argent init`) | CLI and skills (`npx skills add`) |
+| What each action returns | A screenshot and the accessibility tree | A text snapshot or diff; screenshots on request |
+| Runs fully solved | 6 / 6 | 6 / 6 |
+| Tokens per run (median) | 1.84 M | 0.34 M |
+| Cost per run (average) | $1.27 | $0.41 |
+| React profiler on React Native 0.87 | Worked with no setup | Needed `agent-react-devtools` and two files patched |
+| Best for | Profiling, and seeing the screen by default | Frequent runs, CI and long sessions |
+
+The rest of this post is how I got those numbers, and what they leave out.
+
 Coding agents used to stop at "it compiles". In 2026 a set of tools lets them run the app, tap through it, read the screen and profile it. Two are built with React Native in mind: Software Mansion's [Argent](https://argent.swmansion.com/) and Callstack's [agent-device](https://github.com/callstack/agent-device). Both claim to close the loop. I wanted to know what that looks like on a real app, and what it costs.
 
 So I planted three bugs in a small React Native 0.87 app and gave Claude Code the same bug reports twice: once with only Argent, once with only agent-device. Everything is in [a public repo](https://github.com/psingh2907/rn-agent-sim-lab): the app, the harness, the rubric, every transcript and every score.
@@ -146,6 +161,24 @@ I can't tell from four runs whether this comes from the tools. agent-device's gu
 **Use Argent when profiling is the main job**, or you want the agent to see the screen by default. Its React and CPU profiler worked on React Native 0.87 with no project changes, and it pointed straight at the slow code.
 
 **Either way, help the tool.** Both rely on the accessibility tree. The planted app had `accessibilityLabel` and `accessibilityState` on its buttons, and that's what let both agents find the right row and read its state. If your app doesn't, the agent falls back to screenshots and coordinates.
+
+## FAQ
+
+### Who makes Argent and agent-device?
+
+Argent is from Software Mansion, and agent-device (sometimes written "agent device") is from Callstack. Both are
+built with React Native in mind, and both drive iOS simulators, Android emulators and physical devices.
+
+### Does Argent work with Claude Code?
+
+Yes. `argent init` installs its MCP server, skills and rules for Claude Code, and that's the setup tested here:
+Argent 0.26.0 with Claude Code 2.1.42. agent-device worked with Claude Code too, through its CLI, its skills and a
+few lines in `CLAUDE.md`.
+
+### Which is cheaper to run?
+
+agent-device. Its runs used about a fifth of the tokens and cost about a third as much ($0.41 against $1.27 on
+average), because it returns text instead of a screenshot after every action.
 
 <Takeaways
   items={[

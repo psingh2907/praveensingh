@@ -5,9 +5,9 @@ export const meta = {
   published: "2026-10-08",
   tags: ["React Native", "AI", "Expo", "Agents"],
   platforms: ["iOS", "Android"],
-  seoTitle: "Agent-ready React Native: App Intents",
+  seoTitle: "Expo App Intents in React Native, measured",
   seoDescription:
-    "Expose a React Native app's actions to Siri with expo-app-intents: three designs measured with the app closed, and a SQLite bug that silently lost data.",
+    "expo-app-intents in practice: exposing a React Native app to Siri, three designs measured with the app closed, and a SQLite bug that silently lost data.",
   repo: "https://github.com/psingh2907/rn-agent-ready-lab",
   mentions: [
     { name: "Expo AppIntents", url: "https://docs.expo.dev/versions/v58.0.0/sdk/app-intents/" },
@@ -74,6 +74,56 @@ The difference that matters for React Native is in the first row. Both platforms
 build time**, from native code in the app. You can't register an action from JavaScript at runtime. That's why
 `expo-app-intents` has you write intents in Swift, in an `app-intents/` folder that Expo compiles into the app
 target as an inline module.
+
+## Setting up expo-app-intents
+
+The setup is short. Install the library in an Expo SDK 58 project:
+
+```bash
+npx expo install expo-app-intents
+```
+
+Then add its config plugin, and tell Expo to compile the `app-intents/` folder into the app target as an inline
+module:
+
+```json title="app.json (excerpt)"
+{
+  "expo": {
+    "plugins": ["expo-app-intents"],
+    "experiments": {
+      "inlineModules": { "watchedDirectories": ["app-intents"] }
+    }
+  }
+}
+```
+
+Each intent is a Swift `AppIntent` in that folder. The smallest useful one hands the call to JavaScript:
+
+```swift title="app-intents/TaskIntents.swift (excerpt)"
+import AppIntents
+internal import ExpoAppIntents
+
+struct AddTaskQueuedIntent: AppIntent {
+  static let title: LocalizedStringResource = "Add Task (Queued)"
+  static let description = IntentDescription("Adds a task to today's list the next time the app runs.")
+
+  @Parameter(title: "Title")
+  var taskTitle: String
+
+  func perform() async throws -> some IntentResult & ProvidesDialog {
+    await AppIntentDispatcher.shared.dispatch(name: "addTask", params: ["title": .string(taskTitle)])
+    return .result(dialog: "\(taskTitle) will be added the next time you open the app.")
+  }
+}
+```
+
+On the JavaScript side, `useAppIntents` from `expo-app-intents` receives the queued calls (the handler is shown
+below), and `refreshShortcutsAsync()` updates parameterized shortcuts when your data changes. Rebuild the native app
+after adding or changing an intent: they're compiled in, so Metro's fast refresh won't pick them up. The whole lab
+setup, including App Shortcuts and an entity, is in the
+[repo's `app-intents/` folder](https://github.com/psingh2907/rn-agent-ready-lab/tree/main/app-intents).
+
+That gets a call into your app. What it can do once it's there depends on whether your JavaScript is running.
 
 ## The lab app
 
