@@ -383,6 +383,24 @@ The simulators can do most of this:
 - **Killing the app:** `xcrun simctl terminate booted <bundle id>` on iOS, and `adb shell am force-stop <package>` on Android.
 - **Background uploads and background tasks:** test these on a real phone. `expo-background-task` doesn't run in the iOS simulator at all.
 
+## FAQ
+
+### When should I decide that a React Native app is offline-first?
+
+On day one, before the first screen. Offline-first changes your IDs, your API and how every screen reads data,
+so it's expensive to add later.
+
+### What is an outbox in an offline-first app?
+
+A table of pending writes. Each change and its outbox entry are written in one transaction, with IDs generated on
+the phone, and the outbox ID is sent as an idempotency key so a retried write is applied only once.
+
+### Should I build my own sync or use an engine like PowerSync?
+
+Use an engine when your data is mostly records synced from Postgres. Build your own outbox when the server has to
+enforce domain rules, or your backend isn't Postgres. Even with PowerSync, your API still has to be idempotent and
+still decides conflicts.
+
 <Takeaways
   items={[
     "Decide on offline-first before the first screen: it changes IDs, the API and how every screen reads data.",

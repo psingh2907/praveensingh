@@ -28,7 +28,7 @@ export const person = {
   email: `mailto:${site.email}`,
   address: { "@type": "PostalAddress", addressLocality: city, addressRegion: "Uttar Pradesh", addressCountry: "IN" },
   // Ties this site to the same person on other sites (entity matching).
-  sameAs: [site.linkedin, site.github],
+  sameAs: [site.linkedin, site.github, site.devto],
   knowsAbout: [
     "React Native",
     "Mobile app development",
@@ -147,14 +147,18 @@ export function breadcrumbs(items: { name: string; path: string }[]) {
   };
 }
 
-export const faqPage = {
-  "@type": "FAQPage",
-  mainEntity: faq.map((f) => ({
-    "@type": "Question",
-    name: f.question,
-    acceptedAnswer: { "@type": "Answer", text: f.answer },
-  })),
-};
+/** Questions and answers shown on a page; the home page's FAQ by default. */
+export function faqPage(items: { question: string; answer: string }[] = faq, path?: string) {
+  return {
+    "@type": "FAQPage",
+    ...(path && { "@id": absolute(path) }),
+    mainEntity: items.map((f) => ({
+      "@type": "Question",
+      name: f.question,
+      acceptedAnswer: { "@type": "Answer", text: f.answer },
+    })),
+  };
+}
 
 // The home page: a profile of Praveen, with the projects as a list.
 export const profilePage = {

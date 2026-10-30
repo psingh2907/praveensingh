@@ -26,6 +26,7 @@ export const site = {
   email: "praveen.codeit@gmail.com",
   github: "https://github.com/psingh2907",
   linkedin: "https://www.linkedin.com/in/praveens2/",
+  devto: "https://dev.to/praveensingh",
   resume: "/Praveen_Singh_Senior_React_Native_Developer.pdf",
   vcard: "/praveen-singh.vcf",
   // 512px square crop. The share image and contact card use their own copies

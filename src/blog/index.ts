@@ -39,6 +39,8 @@ export type Post = PostMeta & {
   readingMinutes: number;
   wordCount: number;
   headings: Heading[];
+  /** The post's "## FAQ" section, for FAQPage structured data. */
+  faq: { question: string; answer: string }[];
 };
 
 const dir = path.join(process.cwd(), "src/blog/posts");
@@ -65,11 +67,35 @@ function headings(source: string): Heading[] {
   });
 }
 
+const plain = (markdown: string) =>
+  markdown
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[`*_]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// A "## FAQ" section: each "### Question" and the paragraphs under it, up to
+// the next heading or component. Answer engines quote these directly.
+function faq(source: string) {
+  const section = source.match(/^## FAQ\n([\s\S]*?)(?=^## |^<|(?![\s\S]))/m)?.[1] ?? "";
+  return [...section.matchAll(/^### (.+)\n([\s\S]*?)(?=^### |(?![\s\S]))/gm)].map(([, question, answer]) => ({
+    question: plain(question),
+    answer: plain(answer),
+  }));
+}
+
 async function load(slug: string): Promise<Post> {
   const source = fs.readFileSync(path.join(dir, `${slug}.mdx`), "utf8");
   const { meta } = (await import(`./posts/${slug}.mdx`)) as { meta: PostMeta };
   const words = wordCount(source);
-  return { ...meta, slug, wordCount: words, readingMinutes: Math.max(1, Math.round(words / 230)), headings: headings(source) };
+  return {
+    ...meta,
+    slug,
+    wordCount: words,
+    readingMinutes: Math.max(1, Math.round(words / 230)),
+    headings: headings(source),
+    faq: faq(source),
+  };
 }
 
 /** Newest first. Includes drafts and scheduled posts in development only. */

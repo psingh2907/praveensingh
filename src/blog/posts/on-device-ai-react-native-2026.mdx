@@ -248,6 +248,22 @@ I couldn't test this one: Gemini Nano needs a supported Android 14+ phone, and a
 
 **Watch `expo-ai`.** It's in review with an Apple provider, streaming and tool calls. If it lands, most of the setup fixes above become Expo's problem rather than yours.
 
+## FAQ
+
+### Can a React Native app run an LLM on the device, with no server?
+
+Yes. Apple's Foundation Models (through `@react-native-ai/apple`) and React Native ExecuTorch both run on the
+device, and both can sit behind the same AI SDK call. Keep a cloud fallback for devices where neither works.
+
+### Is a 1B on-device model reliable enough for JSON output?
+
+Not on its own. A 1B ExecuTorch model returned schema-valid JSON 2 times out of 20; an example prompt and a repair
+step got it to 6 out of 10. Apple's guided generation returned valid output 20 times out of 20.
+
+### Is `apple.isAvailable()` enough to know Apple's model will work?
+
+No. Make a tiny probe call and cache the result, rather than trusting the availability flag alone.
+
 <Takeaways
   items={[
     "Put both engines behind the AI SDK so the calling code stays the same; ExecuTorch needs a small adapter.",

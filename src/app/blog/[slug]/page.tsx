@@ -2,7 +2,16 @@ import { ViewTransition } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AndroidLogo, AppleLogo, ArrowLeft, ArrowRight } from "@phosphor-icons/react/ssr";
+import {
+  AndroidLogo,
+  AppleLogo,
+  ArrowLeft,
+  ArrowRight,
+  DevToLogo,
+  GithubLogo,
+  LinkedinLogo,
+  RssSimple,
+} from "@phosphor-icons/react/ssr";
 import { Avatar } from "@/components/avatar";
 import { JsonLd } from "@/components/json-ld";
 import { PageShell } from "@/components/page-shell";
@@ -10,7 +19,7 @@ import { site } from "@/content";
 import { allPosts, findPost, formatDate, postBody, tagSlug } from "@/blog";
 import { ReadingProgress } from "@/blog/reading-progress";
 import { TableOfContents } from "@/blog/table-of-contents";
-import { absolute, breadcrumbs, ids, pageMetadata } from "@/lib/seo";
+import { absolute, breadcrumbs, faqPage, ids, pageMetadata } from "@/lib/seo";
 
 export const dynamicParams = false;
 
@@ -43,6 +52,14 @@ export async function generateMetadata({ params }: PageProps<"/blog/[slug]">): P
 }
 
 const platformIcons = { iOS: AppleLogo, Android: AndroidLogo };
+
+// Where a reader can keep up with new posts.
+const follow = [
+  { label: "RSS", href: "/blog/rss.xml", Icon: RssSimple },
+  { label: "LinkedIn", href: site.linkedin, Icon: LinkedinLogo },
+  { label: "dev.to", href: site.devto, Icon: DevToLogo },
+  { label: "GitHub", href: site.github, Icon: GithubLogo },
+];
 
 export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
   const { slug } = await params;
@@ -105,6 +122,7 @@ export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
             { name: "Blog", path: "/blog" },
             { name: post.title, path },
           ]),
+          ...(post.faq.length > 0 ? [faqPage(post.faq, `${path}#faq`)] : []),
         ]}
       />
 
@@ -187,6 +205,21 @@ export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
             >
               Work with me
             </Link>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+            <span className="font-semibold">Follow new posts</span>
+            {follow.map(({ label, href, Icon }) => (
+              <a
+                key={label}
+                href={href}
+                {...(href.startsWith("http") && { target: "_blank", rel: "me noopener noreferrer" })}
+                className="inline-flex items-center gap-1.5 text-muted transition-colors hover:text-accent"
+              >
+                <Icon size={16} weight="fill" aria-hidden />
+                {label}
+              </a>
+            ))}
           </div>
 
           {related.length > 0 && (

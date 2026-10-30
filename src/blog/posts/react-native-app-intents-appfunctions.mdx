@@ -401,6 +401,25 @@ watch Gemini call them.
 - **Make every handler safe to replay**, and remove a pending call only after its work succeeded.
 - **`expo-app-intents` is alpha**, and its docs warn of frequent breaking changes. Pin the version.
 
+## FAQ
+
+### Can Siri call a React Native app that isn't running?
+
+Yes, but the intent's `perform()` runs in Swift. `expo-app-intents` queues the call for JavaScript without
+starting it, so with the app closed a queued task wasn't saved until the app was next opened. Doing the work in
+Swift saved it in 5–23 ms.
+
+### Why did my App Intent lose data that JavaScript had saved with expo-sqlite?
+
+expo-sqlite bundles its own copy of SQLite. Writing the same database file from Swift with the system SQLite
+deleted the WAL file and lost a task. Use `import ExpoSQLite` and the `exsqlite3_*` functions so both sides share
+one copy.
+
+### Does the same apply to Android's AppFunctions?
+
+AppFunctions have the same shape: Kotlin runs first, and expo-sqlite ships its own SQLite on Android too. That
+comes from the docs and the expo-sqlite source; I haven't run the Android half yet.
+
 <Takeaways
   items={[
     "App Intents run in Swift. expo-app-intents queues the call for JavaScript, but doesn't start it.",

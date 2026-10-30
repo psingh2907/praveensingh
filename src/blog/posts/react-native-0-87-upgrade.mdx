@@ -268,6 +268,29 @@ I've since used the same app on 0.87 to [compare Argent and agent-device](/blog/
 and built an [on-device AI lab](/blog/on-device-ai-react-native-2026) on it, which needed one more 0.87 fix in
 `react-native-executorch`.
 
+## FAQ
+
+### How long does the React Native 0.87 upgrade take?
+
+About an afternoon for a mid-size app on 0.86, plus a check of your dependencies. In my demo app it was the
+template diff, then 40 lines of code changes across 6 files.
+
+### Why does my app have TypeScript errors after upgrading to 0.87?
+
+0.87 ships stricter types: ref types become `ViewInstance`, `TextInputInstance` and friends, `useColorScheme()`
+can return null, and `react-native/Libraries` deep imports are hard errors. An app that type-checked cleanly on
+0.86.3 had 16 errors.
+
+### Can I keep the legacy types opt-out instead of fixing the errors?
+
+Not for long. The opt-out hid only 10 of the 16 errors, and it's gone after 0.88, so the fixes are needed anyway.
+
+### Which 0.87 changes break at runtime rather than at build time?
+
+`InteractionManager.runAfterInteractions` is removed, and calling it crashes; replace it with
+`requestIdleCallback`. `StatusBar`'s `translucent` and `backgroundColor` and `Modal`'s `animated` are silently
+ignored, so search for them by hand.
+
 <Takeaways
   items={[
     "Merge the template diff by hand: edgeToEdgeEnabled now defaults to true on Android.",

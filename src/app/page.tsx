@@ -31,7 +31,7 @@ export default async function Home() {
 
   return (
     <>
-      <JsonLd nodes={[profilePage, faqPage]} />
+      <JsonLd nodes={[profilePage, faqPage()]} />
       {/* The boot screen, home page only: visitors landing on a case study
           from search go straight to it. */}
       <div aria-hidden className="boot">
