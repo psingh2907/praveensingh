@@ -1,31 +1,67 @@
 export const meta = {
-  title: "Fixing checklist scroll jank in React Native with FlashList",
+  title: "Moving long checklists from FlatList to FlashList v2: what changes and what breaks",
   description:
-    "How moving long, mixed-content checklists from FlatList to FlashList removed scroll jank in Delightree's franchise operations app, and what to watch for with recycled cells.",
-  published: "2026-10-15",
+    "What I learned moving Delightree's audit checklists from FlatList to FlashList v2: why recycling helps long mixed lists, the stale-state bug it brings, and how to keep it fast.",
+  published: "2026-10-30",
   tags: ["React Native", "Performance", "FlashList"],
   platforms: ["iOS", "Android"],
-  draft: true,
+  seoTitle: "FlatList to FlashList v2 for long lists",
+  seoDescription:
+    "Moving long, mixed React Native lists from FlatList to FlashList v2: getItemType, useRecyclingState, keys inside rows, and measuring in release builds.",
+  mentions: [
+    { name: "FlashList", url: "https://shopify.github.io/flash-list/" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+  ],
 };
 
-{/* DRAFT for Praveen: replace the TODO notes with your own details (device, numbers, the recycling bug,
-how you measured), then remove `draft: true` to publish. */}
+<AtAGlance
+  problem="Long audit checklists that mix headers, questions, notes and photos, slow to load and scroll"
+  fix="FlatList → FlashList v2, one recycling pool per row type, and lighter re-renders"
+  result="~42%"
+  resultLabel="faster audit screen loads at Delightree, from FlashList and rendering work together"
+/>
 
-<Note title="TODO (Praveen)">Add the device you tested on and the before/after numbers (FPS, dropped frames or blank cells).</Note>
+<ShortAnswer>
+  Move long or mixed lists to FlashList v2 when FlatList drops frames or shows blank rows. It recycles rows instead of
+  rebuilding them, so far less work happens per scrolled row. Give each kind of row its own pool with `getItemType`.
+  Expect one new bug: a recycled row keeps its local state, so reset it with `useRecyclingState`. Don't put `key`
+  props inside rows, and judge the result in a release build, not in development.
+</ShortAnswer>
 
-At Delightree, franchise teams work through audits and checklists on their phones: long lists that mix section headers, yes/no questions, notes and photo evidence. On mid-range Android phones those lists stuttered when scrolled quickly. Moving them from `FlatList` to Shopify's `FlashList` removed the jank. This post covers why it worked and the one class of bug the move introduces.
+At Delightree, franchise teams work through audits and checklists on their phones, across 150+ brands. A checklist
+is a long list of mixed rows: section headers, yes/no questions, notes and photo evidence. Moving those screens from
+`FlatList` to Shopify's `FlashList`, along with cutting unnecessary re-renders, made audit screens load about 42%
+faster.
+
+That number is from production, and the app's code isn't mine to publish, so this post has no lab repo. It covers
+what changes when you switch, the bug the switch brings, and how to check the result on your own list. Everything
+about FlashList's API here is from its v2 documentation.
 
 ## Why does FlatList struggle with long, mixed lists?
 
-`FlatList` virtualises by mounting and unmounting rows as they enter and leave a window around the viewport. Every row that scrolls in is a fresh component tree to create, lay out and render on the JS thread. When rows are heavy (images, inputs, conditional sections) and the user flings the list, the JS thread falls behind and you get dropped frames or blank space where rows should be.
+`FlatList` virtualises by mounting and unmounting rows as they enter and leave a window around the viewport. Every row
+that scrolls in is a fresh component tree to create, lay out and render on the JavaScript thread. When rows are heavy
+(images, inputs, conditional sections) and the user flings the list, the JavaScript thread falls behind and you get
+dropped frames, or blank space where rows should be.
 
 ## What does FlashList change?
 
-`FlashList` recycles cells instead: a row that leaves the screen is reused for the next row coming in, re-rendered with new props rather than rebuilt. Far less work happens per scrolled row, which is what removes the jank. FlashList v2 is built for React Native's New Architecture and measures items itself, so the `estimatedItemSize` prop v1 needed is gone.
+`FlashList` recycles rows instead. A row that leaves the screen isn't destroyed: the same component instance is
+re-rendered with the next item's props. Re-rendering an existing tree is much cheaper than building a new one, which
+is where the smoother scrolling comes from.
+
+Version 2 changed a lot from version 1:
+
+- **It needs the New Architecture.** The v2 migration guide is explicit that v2 only works on top of it. On the old
+  architecture, stay on v1.
+- **No more size estimates.** v2 measures items itself, so `estimatedItemSize`, `estimatedListSize` and
+  `estimatedFirstItemOffset` are deprecated. You can delete them.
+- **Typed refs changed.** A ref is now `FlashListRef<Item>` instead of `FlashList<Item>`.
+- **`MasonryFlashList` is gone.** It's now a `masonry` prop on `FlashList`.
 
 ## The migration
 
-For most lists the change is the import:
+For most lists the change is the import and the component name:
 
 ```tsx title="ChecklistScreen.tsx"
 import { FlashList } from "@shopify/flash-list";
@@ -38,16 +74,130 @@ import { FlashList } from "@shopify/flash-list";
 />
 ```
 
-`getItemType` matters for mixed lists. It keeps separate recycling pools per row type, so a photo row is only ever reused as another photo row, not rebuilt from a header.
+`getItemType` matters most on mixed lists. With it, FlashList keeps a separate recycling pool for each type and never
+recycles a row into a different type. A photo row is only ever reused as another photo row, so it re-renders with new
+data instead of turning a header into a photo row.
 
-## The catch: state in recycled rows
+Memoize what you pass in, too. FlashList's docs say memoizing its props matters more in v2, so define `renderItem`
+outside the component or wrap it in `useCallback`, and don't build a new `data` array on every render.
 
-Because a cell is reused, local state inside a row component survives into the next item that cell shows. An expanded note or a half-typed answer can appear on the wrong question. Keep row state in the list's data or a store keyed by item id, or use FlashList v2's `useRecyclingState`, which resets when the item changes. Avoid a `key` prop inside rows that changes per item: it forces a remount and throws away the benefit of recycling.
+## The catch: recycled rows keep their state
 
-<Note title="TODO (Praveen)">Describe the recycling bug you hit (if any) and how you fixed it.</Note>
+Because a row's component instance is reused, any `useState` inside it survives into the next item that row shows.
+On a checklist, that looks like this: you expand the note on question 3, scroll down, and question 27 shows up with
+its note already expanded, because it's the same component wearing different props. A half-typed answer can move the
+same way.
+
+There are two fixes. The first is to keep the state outside the row, in the list's data or a store keyed by item ID.
+The second, for state that really belongs to the row, is FlashList's `useRecyclingState`. It works like `useState`
+but takes a dependency array, and resets when the dependencies change:
+
+```tsx title="QuestionRow.tsx"
+import { useRecyclingState } from "@shopify/flash-list";
+
+function QuestionRow({ item }: { item: Question }) {
+  // Starts closed for every question, even when this row was showing another one.
+  const [noteOpen, setNoteOpen] = useRecyclingState(false, [item.id]);
+  // ...
+}
+```
+
+It also tells FlashList the row may have changed size, the same way `useLayoutState` does. Use `useLayoutState` for
+state that changes a row's height but doesn't need resetting, so the list resizes the row smoothly instead of waiting
+for `onLayout`.
+
+<Gotcha title="Don't fix it with a key">
+  Putting a `key` that changes per item on a row, or on components inside it, does reset its state, but only by
+  forcing a remount, which throws away the recycling you switched for. FlashList's docs warn that a `key` inside items
+  "will highly degrade performance".
+</Gotcha>
+
+## Lists inside rows: useMappingHelper
+
+React still wants keys when a row maps over an array, like the photo thumbnails on a question. For those, use
+`useMappingHelper`. Its `getMappingKey` picks a key strategy that doesn't fight recycling:
+
+```tsx title="PhotoStrip.tsx"
+import { useMappingHelper } from "@shopify/flash-list";
+
+function PhotoStrip({ photos }: { photos: Photo[] }) {
+  const { getMappingKey } = useMappingHelper();
+  return photos.map((photo, index) => <Thumbnail key={getMappingKey(photo.id, index)} photo={photo} />);
+}
+```
+
+## Keep each recycle cheap
+
+Recycling saves building a tree, but every scrolled row still re-renders. The less a row does on each render, the
+smoother the list:
+
+- **Memoize heavy parts that don't depend on the item.** A row's toolbar or icon set can be wrapped in `memo`, so it
+  skips re-rendering when the row is recycled.
+- **Do the work before the list.** Format dates, work out labels and filter answers once, in the data, rather than in
+  every row render.
+- **Keep row types honest.** If one type has a dozen visual variants, splitting it into more `getItemType` types
+  gives each pool rows that need fewer changes on reuse.
+
+FlashList's own advice is to measure before and after each of these changes, rather than memoizing everything by
+default.
 
 ## Measure in release builds
 
-Debug builds run slower JS and exaggerate jank, so compare release builds on a low-end Android phone, where problems show first. Watch the UI and JS frame rates while flinging the list, and profile renders to confirm rows re-render rather than remount.
+FlashList's docs warn that it can look slower than FlatList in development, so compare release builds only. Use a
+low-end Android phone, where problems show first, and fling the list from top to bottom and back:
 
-<Note title="TODO (Praveen)">Add how you measured (Perf Monitor, Flashlight, React Native DevTools) and the final result.</Note>
+1. **Watch the frame rate.** The Perf Monitor in the dev menu shows UI and JavaScript frame rates; a JavaScript frame
+   rate that collapses during a fling is the jank you're fixing.
+2. **Look for blank rows.** Blank space while flinging means rows aren't ready in time.
+3. **Profile a scroll.** In React Native DevTools' profiler, rows should re-render on scroll, not mount. Rows that
+   mount every time usually mean a changing `key` or a missing `getItemType`.
+4. **Time the screen.** For a checklist screen, time from navigation to the list showing its first rows, which is the
+   load time that improved at Delightree.
+
+Run each check on the old and the new list in the same build setup. Only that comparison tells you what the switch
+bought you.
+
+## Before you ship
+
+- The app is on the New Architecture, and FlashList is on v2.
+- `estimatedItemSize` and the other estimate props are deleted.
+- Mixed lists set `getItemType`.
+- No row, or component inside a row, gets a `key` that changes per item; mapped children use `useMappingHelper`.
+- Row-local state uses `useRecyclingState`, or lives outside the row.
+- `renderItem` and `data` are stable between renders.
+- You've compared FlatList and FlashList in release builds, on a low-end Android phone.
+
+## FAQ
+
+### Is FlashList faster than FlatList?
+
+For long lists, and for lists with heavy or mixed rows, usually yes, because it re-renders recycled rows instead of
+building new ones. In development it can look slower, so compare release builds. On Delightree's audit checklists,
+FlashList and rendering work together made screens load about 42% faster.
+
+### Does FlashList v2 work on the old architecture?
+
+No. FlashList v2 only works on React Native's New Architecture. Apps still on the old architecture should use
+FlashList v1.
+
+### Do I still need estimatedItemSize in FlashList v2?
+
+No. v2 measures items itself, and `estimatedItemSize`, `estimatedListSize` and `estimatedFirstItemOffset` are
+deprecated.
+
+### Why does a row show the wrong state after scrolling in FlashList?
+
+The row's component was recycled from another item and kept its local state. Reset it with `useRecyclingState`, with
+the item's ID in its dependency array, or keep the state outside the row.
+
+<Takeaways
+  items={[
+    "FlashList recycles rows instead of rebuilding them, which is what makes long, mixed lists smoother.",
+    "FlashList v2 needs the New Architecture, and drops estimatedItemSize and the other size estimates.",
+    "Set getItemType on mixed lists, so each kind of row is only recycled into the same kind.",
+    "A recycled row keeps its local state: use useRecyclingState with the item's ID, or keep state outside the row.",
+    "Never put a per-item key on a row or inside it; use useMappingHelper for mapped children.",
+    "Memoize the props you pass to FlashList, and keep each row's render cheap.",
+    "Compare FlatList and FlashList in release builds on a low-end Android phone; development builds mislead.",
+  ]}
+/>
