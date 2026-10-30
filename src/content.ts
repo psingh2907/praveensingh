@@ -42,7 +42,7 @@ export const site = {
   // Not a secret: it's in every page's requests.
   gaId: "G-7DSJS5TTGJ",
   // Bump when the content changes; the sitemap reports it to search engines.
-  updated: "2026-10-14",
+  updated: "2026-10-30",
 };
 
 // Shown in the hero phone's Dynamic Island and the desktop notification.
@@ -144,6 +144,14 @@ export type Project = {
    * `capabilities`, so keep this to the brief and don't repeat them.
    */
   challenge: string;
+  /**
+   * The case study's body: how the work was done, a few headed sections
+   * written from the résumé's facts and numbers. Headings are what people
+   * search for, so name the problem, not the project.
+   */
+  story?: { heading: string; paragraphs: string[] }[];
+  /** Slugs of blog posts that go deeper on this work. Unpublished ones are skipped. */
+  posts?: string[];
 };
 
 const shots = (app: string, width: number, height: number, alts: string[]): Screenshot[] =>
@@ -158,6 +166,27 @@ const shots = (app: string, width: number, height: number, alts: string[]): Scre
 export const projects: Project[] = [
   {
     slug: "upgrad",
+    story: [
+      {
+        heading: "One codebase for millions of learners",
+        paragraphs: [
+          "I scaled upGrad's React Native learning app across Android and iOS to 5M+ Android downloads and 100K+ monthly active users, while keeping a 4.6★ rating. Learners use it on every kind of phone and network, so start-up time mattered as much as features: the median cold start went from 2.9 to 1.8 seconds.",
+        ],
+      },
+      {
+        heading: "Course video through native Swift and Kotlin modules",
+        paragraphs: [
+          "Video is the product, so playback runs on Brightcove's native SDKs rather than a JavaScript player. I bridged them through native Swift and Kotlin modules, which gives adaptive-bitrate streaming that drops quality on a weak network instead of stalling, and cut video start-up time by about 37%.",
+          "Learners also download lessons to watch offline. Downloads are kept in encrypted storage, so paid course content stays inside the app.",
+        ],
+      },
+      {
+        heading: "Fixes in hours, not days of store review",
+        paragraphs: [
+          "I automated Android and iOS delivery with Fastlane and GitHub Actions, and added CodePush for JavaScript fixes that don't need a store release. The release cycle went from 5 days to 3, builds from about 18 minutes to 11, and a production hotfix now ships in under 2 hours.",
+        ],
+      },
+    ],
     name: "upGrad Learning",
     company: "upGrad",
     domain: "Edtech",
@@ -201,10 +230,31 @@ export const projects: Project[] = [
     metrics: [
       { label: "Cold start (p50)", before: "2.9s", after: "1.8s", change: "−38%" },
       { label: "Release cycle", before: "5 days", after: "3 days", change: "−40%" },
+      { label: "Build time", before: "~18 min", after: "11 min", change: "−39%" },
     ],
   },
   {
     slug: "reevo",
+    story: [
+      {
+        heading: "Faster data with a normalized Apollo cache",
+        paragraphs: [
+          "Reevo's screens read cards, balances and transactions over GraphQL. I reworked the Apollo Client data flows around normalized state and caching, so a screen reuses what the app already has instead of asking again. API responses got about 30% faster.",
+        ],
+      },
+      {
+        heading: "Security a regulated card product needs",
+        paragraphs: [
+          "Payments go through Visa's APIs with 3-D Secure, sign-in uses the phone's biometrics, and the app was hardened against the OWASP Mobile Top 10. On a credit card app these aren't extras: they're what lets the product launch.",
+        ],
+      },
+      {
+        heading: "Fewer bugs reaching customers",
+        paragraphs: [
+          "I strengthened automated tests and release checks around the critical money flows, at about 78% test coverage. Production bugs went from about 32 to 11. Release builds dropped from about 18 minutes to 11, and an urgent fix went from about 24 hours to 6.",
+        ],
+      },
+    ],
     name: "Reevo",
     company: "Gojoko Technologies",
     domain: "Fintech",
@@ -224,10 +274,32 @@ export const projects: Project[] = [
     metrics: [
       { label: "API response", before: "~850ms", after: "~595ms", change: "−30%" },
       { label: "Frame drops", before: "9.2%", after: "3.8%", change: "−58%" },
+      { label: "Production bugs", before: "~32", after: "11", change: "−66%" },
     ],
   },
   {
     slug: "delightree",
+    posts: ["offline-first-react-native-data-layer", "flashlist-checklist-scroll-jank"],
+    story: [
+      {
+        heading: "Audits that work without signal",
+        paragraphs: [
+          "Audits happen in stores and kitchens, where signal comes and goes. I built the audit and checklist flows offline first: answers and photos are saved on the phone straight away, queued, and synced when the connection returns, so nobody loses an audit to a dead zone. Crash-free sessions went from 98.2% to 99.3%.",
+        ],
+      },
+      {
+        heading: "Checklists that scroll smoothly",
+        paragraphs: [
+          "Checklists are long lists of mixed rows: questions, photos, notes and sections. I moved them to FlashList and cut unnecessary re-renders, which made audit screens load about 42% faster across the 150+ brands on the platform.",
+        ],
+      },
+      {
+        heading: "Finding the right SOP",
+        paragraphs: [
+          "Staff search standard operating procedures by what they need, and each person sees only what their role, location and permissions allow. Debouncing and caching the search cut API latency by about 33% and unnecessary requests by about 30%.",
+        ],
+      },
+    ],
     name: "Delightree",
     company: "Delightree",
     domain: "Operations",
@@ -240,6 +312,7 @@ export const projects: Project[] = [
     platforms: "iOS and Android",
     stack: ["React Native", "TypeScript", "FlashList", "Crashlytics"],
     year: "2026",
+    metrics: [{ label: "Crash-free sessions", before: "98.2%", after: "99.3%", change: "+1.1 pts" }],
     apps: [
       {
         name: "Delightree",
@@ -260,6 +333,15 @@ export const projects: Project[] = [
   },
   {
     slug: "invia-telecom",
+    story: [
+      {
+        heading: "Usage, billing and alerts on the phone",
+        paragraphs: [
+          "I built the React Native app for Android and iOS in about three months, with server data managed through TanStack Query, to the customer's security compliance requirements.",
+          "Usage widgets refresh in 1.9 seconds instead of 3.2, and support tickets about stale data dropped by 38%.",
+        ],
+      },
+    ],
     name: "Invia Telecom",
     company: "Invia",
     domain: "Telecom",
@@ -279,6 +361,26 @@ export const projects: Project[] = [
   },
   {
     slug: "client-apps",
+    story: [
+      {
+        heading: "8 to 10 production apps, 35+ features",
+        paragraphs: [
+          "At an agency, each client brings a different app and a different deadline. Over two years I delivered and supported 8 to 10 production React Native apps across e-commerce, NFC and IoT, and shipped 35+ features from development through to store release.",
+        ],
+      },
+      {
+        heading: "Native code where React Native stops",
+        paragraphs: [
+          "Most of these apps needed something React Native doesn't ship with. NFC tag authentication runs through a custom Kotlin module and has handled 100K+ NFC interactions. Connected hardware, like the kookooVoice talking toy, is controlled in real time over Bluetooth Low Energy. Stores take payments through Stripe, with saved cards and refunds.",
+        ],
+      },
+      {
+        heading: "Sync that survives bad networks",
+        paragraphs: [
+          "Several of these apps had to keep working on patchy networks, so I added offline sync and local caching to their workflows. Sync failures dropped from about 8% to 2%.",
+        ],
+      },
+    ],
     name: "Client apps: payments, NFC and BLE",
     company: "WebMobril Technologies",
     domain: "IoT and Commerce",
@@ -296,6 +398,7 @@ export const projects: Project[] = [
       { icon: "ble", title: "BLE", body: "Real-time control of connected hardware, like the kookooVoice toy." },
     ],
     note: "Built for agency clients, who own and publish the apps, so most aren't linked here.",
+    metrics: [{ label: "Sync failures", before: "~8%", after: "2%", change: "−75%" }],
     apps: [
       {
         name: "kookooVoice",
@@ -313,6 +416,22 @@ export const projects: Project[] = [
   },
   {
     slug: "bareship",
+    posts: ["introducing-bareship", "offline-first-react-native-data-layer"],
+    story: [
+      {
+        heading: "Why I built it",
+        paragraphs: [
+          "Every bare React Native app I've shipped needed the same weeks of plumbing before its first feature: offline writes, token storage, environments and release builds. Bareship is that plumbing, done once, as a template anyone can start from with one command.",
+        ],
+      },
+      {
+        heading: "Rules the build enforces",
+        paragraphs: [
+          "Each write uses one of four offline patterns, and queued writes survive a restart and are applied once. Layers, feature boundaries, translations and accessibility are checked by ESLint and dependency-cruiser, so a broken rule fails the build instead of waiting for code review.",
+          "AGENTS.md, architecture decision records, skills and generators give AI coding agents like Claude Code, Cursor and Copilot the same rules as the team. It runs with no backend, Firebase project or Apple account until you need them.",
+        ],
+      },
+    ],
     name: "Bareship",
     company: "Open source",
     domain: "Open source",

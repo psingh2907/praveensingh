@@ -245,7 +245,8 @@ function ProjectCard({ project }: { project: Project }) {
         )}
         {project.metrics && (
           <dl className="mt-5 grid grid-cols-2 gap-2">
-            {project.metrics.map((m) => (
+            {/* Two fit the card; the case study shows them all. */}
+            {project.metrics.slice(0, 2).map((m) => (
               <div key={m.label} className="rounded-xl bg-surface-2 px-3.5 py-3">
                 <dt className="text-xs text-muted">{m.label}</dt>
                 <dd className="mt-1 flex flex-wrap items-baseline gap-x-2">

@@ -17,6 +17,7 @@ import { JsonLd } from "@/components/json-ld";
 import { InstallCommands, OpenSourceLinks } from "@/components/open-source";
 import { PageShell } from "@/components/page-shell";
 import { experience, projects, site } from "@/content";
+import { allPosts } from "@/blog";
 import { absolute, breadcrumbs, caseStudyPath, ids, pageMetadata, softwareSourceCode } from "@/lib/seo";
 
 // One page per project, built from content.ts at build time. A slug that
@@ -59,6 +60,9 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
   const next = projects[index + 1];
   const path = caseStudyPath(project);
   const image = project.apps?.[0]?.screenshots[0]?.src;
+  // Related posts, in the order listed; drafts only show in development.
+  const published = await allPosts();
+  const posts = (project.posts ?? []).flatMap((slug) => published.filter((p) => p.slug === slug));
 
   const facts = [
     project.openSource
@@ -168,6 +172,22 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
           </section>
         )}
 
+        {project.story && (
+          <section className="mt-12">
+            <h2 className={heading}>How I built it</h2>
+            {project.story.map(({ heading: title, paragraphs }) => (
+              <div key={title} className="mt-6 max-w-[62ch]">
+                <h3 className="text-xl font-semibold tracking-tight">{title}</h3>
+                {paragraphs.map((p) => (
+                  <p key={p} className="mt-2 text-lg leading-relaxed">
+                    {p}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </section>
+        )}
+
         {project.metrics && (
           <section className="mt-12">
             <h2 className={heading}>Results</h2>
@@ -217,6 +237,22 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
           <section className="mt-12">
             <h2 className={`${heading} mb-4`}>On the stores</h2>
             <AppGallery apps={project.apps} />
+          </section>
+        )}
+
+        {posts.length > 0 && (
+          <section className="mt-12">
+            <h2 className={heading}>Read more</h2>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {posts.map((p) => (
+                <li key={p.slug}>
+                  <Link href={`/blog/${p.slug}`} className="block rounded-xl border border-hairline p-4 transition-colors hover:bg-surface-2">
+                    <span className="block font-medium leading-snug">{p.title}</span>
+                    <span className="mt-1 block text-sm text-muted">{p.readingMinutes} min read</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
