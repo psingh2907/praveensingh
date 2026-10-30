@@ -200,7 +200,7 @@ export default async function PostPage({ params }: PageProps<"/blog/[slug]">) {
               </p>
             </div>
             <Link
-              href="/#contact"
+              href="/hire"
               className="self-start whitespace-nowrap rounded-full bg-accent-fill px-5 py-2.5 text-sm font-medium text-white sm:self-center"
             >
               Work with me

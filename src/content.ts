@@ -679,3 +679,96 @@ export const faq = [
       "Email praveen.codeit@gmail.com or message Praveen on LinkedIn at linkedin.com/in/praveens2. He replies within 24 hours.",
   },
 ];
+
+// The /hire page: what Praveen can be hired for, each backed by work on
+// this site. Keep it to facts already in the résumé, case studies and
+// posts; no rates or terms that haven't been agreed.
+export const hire = {
+  services: [
+    {
+      title: "React Native upgrades and the New Architecture",
+      body: "Moving an app to a current React Native version and onto the New Architecture: the template diff, type errors, native build changes and the props that fail silently.",
+      proof: "Wrote up a full 0.86 → 0.87 upgrade: 16 TypeScript errors to 0, plus a runtime crash and two props that silently stopped working.",
+      links: [{ label: "React Native 0.87 upgrade", href: "/blog/react-native-0-87-upgrade" }],
+    },
+    {
+      title: "Performance: start-up, lists and re-renders",
+      body: "Profiling in release builds, then fixing what's slow: cold start, long lists, frame drops and API round trips.",
+      proof: "upGrad's median cold start went from 2.9s to 1.8s; Delightree's audit screens load about 42% faster; Reevo's frame drops fell from 9.2% to 3.8%.",
+      links: [
+        { label: "FlatList to FlashList v2", href: "/blog/flashlist-checklist-scroll-jank" },
+        { label: "upGrad case study", href: "/work/upgrad" },
+      ],
+    },
+    {
+      title: "Native modules in Swift and Kotlin",
+      body: "The parts React Native doesn't ship with: video SDKs, NFC, Bluetooth Low Energy, Siri and system integrations.",
+      proof: "Bridged Brightcove video at upGrad, NFC tag authentication with 100K+ interactions, and real-time BLE control of a talking toy.",
+      links: [
+        { label: "Client apps: NFC and BLE", href: "/work/client-apps" },
+        { label: "Siri and App Intents", href: "/blog/react-native-app-intents-appfunctions" },
+      ],
+    },
+    {
+      title: "Offline-first apps and sync",
+      body: "A local database the screens read from, writes queued in an outbox and applied once, and sync that survives a dead zone.",
+      proof: "Delightree's crash-free sessions went from 98.2% to 99.3% with offline audits; agency apps' sync failures fell from about 8% to 2%.",
+      links: [
+        { label: "Offline-first data layer", href: "/blog/offline-first-react-native-data-layer" },
+        { label: "Bareship template", href: "/work/bareship" },
+      ],
+    },
+    {
+      title: "Release pipelines and CI/CD",
+      body: "Fastlane lanes, GitHub Actions quality gates and over-the-air updates, so a release is routine and a fix can't wait for store review.",
+      proof: "At upGrad the release cycle went from 5 days to 3, and a production hotfix now ships in under 2 hours.",
+      links: [{ label: "upGrad case study", href: "/work/upgrad" }],
+    },
+    {
+      title: "On-device AI and AI-ready apps",
+      body: "Running models on the phone, and exposing an app to Siri, Gemini and coding agents without losing data.",
+      proof: "Measured Apple's Foundation Models against ExecuTorch in one React Native app, and found a SQLite bug that lost data when Siri wrote to the app.",
+      links: [
+        { label: "On-device AI, measured", href: "/blog/on-device-ai-react-native-2026" },
+        { label: "Coding agents on a simulator", href: "/blog/coding-agents-drive-the-simulator" },
+      ],
+    },
+  ],
+  ways: [
+    {
+      title: "A senior role on your team",
+      body: "Senior React Native or mobile engineer, full time. Remote, hybrid or on-site from Noida (Delhi NCR), and can join immediately.",
+    },
+    {
+      title: "Consulting on a project",
+      body: "A defined piece of work, like an upgrade, a performance fix, a native module or an offline-first design, scoped with you before it starts.",
+    },
+  ],
+  faq: [
+    {
+      question: "Is Praveen Singh available for React Native work?",
+      answer:
+        "Yes. Praveen Singh is open to Senior React Native and mobile roles and to consulting, and can start immediately. He works remote, hybrid or on-site from Noida (Delhi NCR).",
+    },
+    {
+      question: "Can Praveen work remotely for a company outside India?",
+      answer:
+        "Yes. Praveen works remotely, and has already built for companies outside India, including the Reevo credit card app for a UK fintech.",
+    },
+    {
+      question: "What React Native work does Praveen take on?",
+      answer:
+        "Praveen takes on React Native upgrades and New Architecture migrations, performance work (start-up, lists, re-renders), native modules in Swift and Kotlin, offline-first data and sync, release pipelines with Fastlane and GitHub Actions, and on-device AI features.",
+    },
+    {
+      question: "Can Praveen upgrade an old React Native app to the New Architecture?",
+      answer:
+        "Yes. React Native version upgrades and New Architecture adoption are part of Praveen's regular work, and he has published a step-by-step account of a 0.86 to 0.87 upgrade, including the runtime crash and silent prop changes it caught.",
+    },
+    {
+      question: "How do I hire Praveen Singh?",
+      answer:
+        "Email praveen.codeit@gmail.com or message Praveen on LinkedIn at linkedin.com/in/praveens2 with a few lines about the role or project. He replies within 24 hours.",
+    },
+  ],
+};

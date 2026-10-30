@@ -10,6 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: absolute("/"), lastModified: updated, changeFrequency: "monthly", priority: 1 },
     { url: absolute("/resume"), lastModified: updated, changeFrequency: "monthly", priority: 0.8 },
+    { url: absolute("/hire"), lastModified: updated, changeFrequency: "monthly", priority: 0.8 },
     ...projects.map((p) => ({
       url: absolute(caseStudyPath(p)),
       lastModified: updated,

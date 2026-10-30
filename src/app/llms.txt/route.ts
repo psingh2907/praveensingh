@@ -26,6 +26,7 @@ export async function GET() {
     `- [Home](${absolute("/")}): portfolio, experience and contact`,
     `- [Résumé](${absolute("/resume")}): experience, projects, skills, education and certifications`,
     `- [Résumé PDF](${absolute(site.resume)})`,
+    `- [Hire](${absolute("/hire")}): what Praveen can be hired for (upgrades, performance, native modules, offline-first, CI/CD, on-device AI), with proof and how to get in touch`,
     "",
     "## Case studies",
     "",

@@ -263,7 +263,7 @@ export default async function CaseStudy({ params }: PageProps<"/work/[slug]">) {
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
-              href="/#contact"
+              href="/hire"
               className="whitespace-nowrap rounded-full bg-accent-fill px-6 py-3 text-[15px] font-medium text-white transition-transform active:scale-[0.98]"
             >
               Get in touch

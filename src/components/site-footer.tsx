@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, FileText, GithubLogo, LinkedinLogo, Notebook } from "@phosphor-icons/react/ssr";
+import { ArrowUpRight, FileText, GithubLogo, Handshake, LinkedinLogo, Notebook } from "@phosphor-icons/react/ssr";
 import { site } from "@/content";
 
 // Pills like the menu bar's: big enough to tap, with hover, press and
@@ -10,7 +10,7 @@ const pill =
 // Shared by the home page and the sub-pages. rel="me" tells search engines
 // the GitHub and LinkedIn profiles belong to the person this site is about;
 // they open in a new tab, like the Dock's, so the site stays open.
-/** `section`: the sub-page's section ("/blog", "/resume"), highlighted when it's one of these links. */
+/** `section`: the sub-page's section ("/blog", "/resume", "/hire"), highlighted when it's one of these links. */
 export function SiteFooter({ section }: { section?: string }) {
   const here = (href: string) => (section === href ? "true" : undefined);
 
@@ -32,6 +32,10 @@ export function SiteFooter({ section }: { section?: string }) {
       <Link href="/resume" aria-current={here("/resume")} className={pill}>
         <FileText size={16} aria-hidden />
         Résumé
+      </Link>
+      <Link href="/hire" aria-current={here("/hire")} className={pill}>
+        <Handshake size={16} aria-hidden />
+        Hire me
       </Link>
       <Link href="/blog" aria-current={here("/blog")} className={pill}>
         <Notebook size={16} aria-hidden />
