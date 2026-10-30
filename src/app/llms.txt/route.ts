@@ -37,7 +37,7 @@ export async function GET() {
     ...projects.flatMap(({ name, openSource: os }) =>
       os
         ? [
-            `- ${name}${os.version ? ` ${os.version}` : ""}: [GitHub](${os.repo})${os.npm ? ` · [npm](${os.npm})` : ""}${os.docs ? ` · [Docs](${os.docs})` : ""} (${os.license})`,
+            `- ${name}${os.version ? ` ${os.version}` : ""}: [GitHub](${os.repo})${os.npm ? ` · [npm](${os.npm})` : ""}${os.docs ? ` · [Docs](${os.docs})` : ""}${os.directory ? ` · [React Native Directory](${os.directory})` : ""} (${os.license})`,
           ]
         : [],
     ),

@@ -125,7 +125,8 @@ export function softwareSourceCode(project: Project) {
     description: project.searchDescription ?? project.summary,
     codeRepository: os.repo,
     url: os.docs ?? os.repo,
-    ...(os.npm && { sameAs: [os.npm] }),
+    // The same software on npm and React Native Directory (entity matching).
+    ...((os.npm || os.directory) && { sameAs: [os.npm, os.directory].filter(Boolean) }),
     ...(os.version && { version: os.version }),
     programmingLanguage: "TypeScript",
     runtimePlatform: "React Native",

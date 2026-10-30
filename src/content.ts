@@ -130,6 +130,8 @@ export type Project = {
     repo: string;
     npm?: string;
     docs?: string;
+    /** Its React Native Directory listing (reactnative.directory). */
+    directory?: string;
     license: string;
     /** The latest published version. */
     version?: string;
@@ -468,6 +470,7 @@ export const projects: Project[] = [
       repo: "https://github.com/psingh2907/bareship",
       npm: "https://www.npmjs.com/package/create-bareship",
       docs: "https://bareship.praveensingh.co.in",
+      directory: "https://reactnative.directory/package/create-bareship",
       license: "MIT",
       install: ["npx create-bareship Acme", "cd Acme", "pnpm ios"],
     },

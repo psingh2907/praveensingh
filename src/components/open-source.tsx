@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, BookOpenText, Check, Copy, GithubLogo, Package } from "@phosphor-icons/react";
+import { ArrowUpRight, BookOpenText, Check, Copy, GithubLogo, ListMagnifyingGlass, Package } from "@phosphor-icons/react";
 import type { Project } from "@/content";
 
 type OpenSource = NonNullable<Project["openSource"]>;
@@ -56,6 +56,7 @@ export function OpenSourceLinks({ project }: { project: OpenSource }) {
     { label: "GitHub", href: project.repo, Icon: GithubLogo },
     ...(project.npm ? [{ label: "npm", href: project.npm, Icon: Package }] : []),
     ...(project.docs ? [{ label: "Docs", href: project.docs, Icon: BookOpenText }] : []),
+    ...(project.directory ? [{ label: "React Native Directory", href: project.directory, Icon: ListMagnifyingGlass }] : []),
   ];
   return (
     <ul className="flex flex-wrap gap-2">
