@@ -1,0 +1,31 @@
+# After each successful production deploy, tells IndexNow (Bing and others)
+# which pages changed, using the live sitemap's dates. Vercel reports its
+# deploys to GitHub as deployments, which is what starts this.
+name: IndexNow
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      all:
+        description: "Submit every page in the sitemap"
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/indexnow.mjs ${{ inputs.all && '--all' || '' }}
