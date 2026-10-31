@@ -1,3 +1,4 @@
+import { CalendarBlank } from "@phosphor-icons/react/ssr";
 import { hero, projects, site } from "@/content";
 import { HeroDemo } from "./hero-demo";
 import { LiveIsland } from "./live-island";
@@ -15,7 +16,10 @@ export function Hero() {
   // subtext are the page's largest paint, and browsers don't count text
   // until it's visible.
   const enter = (delay: number, rise?: number) =>
-    ({ "--delay": `${delay}s`, ...(rise ? { "--rise": `${rise}px` } : {}) }) as React.CSSProperties;
+    ({
+      "--delay": `${delay}s`,
+      ...(rise ? { "--rise": `${rise}px` } : {}),
+    }) as React.CSSProperties;
 
   return (
     <Window id="top" title="Welcome" priority>
@@ -28,7 +32,10 @@ export function Hero() {
         <div className="lg:col-span-7 lg:py-14">
           <h1 className="rise" style={enter(0)}>
             {/* Who and what first, for search; the headline stays the visual lead. */}
-            <span data-scramble="intro" className="mb-4 block text-sm font-medium uppercase tracking-[0.18em] text-accent md:text-base">
+            <span
+              data-scramble="intro"
+              className="mb-4 block text-sm font-medium uppercase tracking-[0.18em] text-accent md:text-base"
+            >
               {`${site.name} · ${site.role}`}
             </span>
             <span className="block max-w-[20ch] text-[2.75rem] font-semibold leading-[1.05] tracking-tighter md:text-6xl lg:text-7xl">
@@ -42,15 +49,23 @@ export function Hero() {
             {hero.subtext}
           </p>
           <div style={enter(0.2)} className="rise mt-10 flex flex-wrap gap-3">
+            {/* Booking a call is the main action: it's what recruiters are here to do. */}
+            <a
+              href="#calendar"
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-accent-fill px-6 py-3 text-[15px] font-medium text-white shadow-[0_8px_20px_-8px_var(--accent-fill)] transition-transform active:scale-[0.98]"
+            >
+              <CalendarBlank size={18} weight="bold" aria-hidden />
+              Book a 15-min call
+            </a>
             <a
               href="#work"
-              className="whitespace-nowrap rounded-full bg-accent-fill px-6 py-3 text-[15px] font-medium text-white transition-transform active:scale-[0.98]"
+              className="whitespace-nowrap rounded-full border border-hairline px-6 py-3 text-[15px] font-medium text-accent transition-colors hover:bg-accent-soft active:scale-[0.98]"
             >
               View work
             </a>
             <a
               href="#contact"
-              className="whitespace-nowrap rounded-full border border-hairline px-6 py-3 text-[15px] font-medium text-accent transition-colors hover:bg-accent-soft active:scale-[0.98]"
+              className="whitespace-nowrap rounded-full px-4 py-3 text-[15px] font-medium text-accent transition-colors hover:bg-accent-soft active:scale-[0.98]"
             >
               Get in touch
             </a>
@@ -61,13 +76,18 @@ export function Hero() {
               style={enter(0.3)}
               className="rise mt-6 inline-flex max-w-full items-center gap-2 rounded-full border border-hairline px-3.5 py-1.5 text-sm transition-colors hover:bg-accent-soft"
             >
-              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full bg-[#28c840]" />
+              <span
+                aria-hidden
+                className="h-2 w-2 shrink-0 rounded-full bg-[#28c840]"
+              />
               <span className="text-muted">Maintaining</span>
               <span className="font-semibold">{maintaining.name}</span>
               <span className="rounded-full bg-accent-soft px-2 py-px text-xs font-semibold text-accent tabular-nums">
                 v{maintaining.openSource!.version}
               </span>
-              <span className="hidden truncate text-muted sm:inline">· my open-source React Native template</span>
+              <span className="hidden truncate text-muted sm:inline">
+                · my open-source React Native template
+              </span>
             </a>
           )}
         </div>
@@ -86,7 +106,10 @@ export function Hero() {
               />
             </div>
           </div>
-          <div data-parallax="front" className="absolute bottom-0 left-0 w-[58%]">
+          <div
+            data-parallax="front"
+            className="absolute bottom-0 left-0 w-[58%]"
+          >
             <div className="rise rise-spring" style={enter(0.1, 80)}>
               <Phone
                 src={hero.screens.front.src}

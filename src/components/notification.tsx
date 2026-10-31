@@ -52,7 +52,7 @@ export function Notification() {
               type="button"
               onClick={() => {
                 setOpen(false);
-                openWindow("contact");
+                openWindow("calendar");
               }}
               className="flex w-full items-start gap-3 p-3.5 text-left"
             >

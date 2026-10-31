@@ -1,8 +1,14 @@
 "use client";
 
 import { useSyncExternalStore, ViewTransition } from "react";
-import { Atom, Command, MagnifyingGlass, WifiHigh } from "@phosphor-icons/react";
+import {
+  Atom,
+  Command,
+  MagnifyingGlass,
+  WifiHigh,
+} from "@phosphor-icons/react";
 import { site } from "@/content";
+import { BookCallPill } from "./book-call-pill";
 import { openMenu, openSpotlight } from "@/lib/desktop";
 import { openDevMenu } from "@/lib/dev";
 
@@ -15,8 +21,15 @@ const links = [
   { href: "#contact", label: "Contact" },
 ];
 
-const dateFormat = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
-const timeFormat = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
+const dateFormat = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+});
+const timeFormat = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+});
 
 // The clock ticks on the client only; the server renders it empty so
 // hydration never disagrees about the time.
@@ -40,10 +53,19 @@ function useNow() {
 // capsule with the charge level in solid colour, and a small cap.
 function Battery() {
   return (
-    <svg width="25" height="12" viewBox="0 0 25 12" fill="currentColor" aria-hidden>
+    <svg
+      width="25"
+      height="12"
+      viewBox="0 0 25 12"
+      fill="currentColor"
+      aria-hidden
+    >
       <rect width="22" height="12" rx="4" opacity="0.35" />
       <path d="M4 0h12v12H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4Z" />
-      <path d="M23.2 4.2c.8.3 1.3 1 1.3 1.8s-.5 1.5-1.3 1.8V4.2Z" opacity="0.4" />
+      <path
+        d="M23.2 4.2c.8.3 1.3 1 1.3 1.8s-.5 1.5-1.3 1.8V4.2Z"
+        opacity="0.4"
+      />
     </svg>
   );
 }
@@ -74,7 +96,10 @@ export function MenuBar() {
           <ul className="ml-2 hidden items-center gap-5 md:flex">
             {links.map((link) => (
               <li key={link.href}>
-                <a href={link.href} className="rounded px-1 py-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/15">
+                <a
+                  href={link.href}
+                  className="rounded px-1 py-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/15"
+                >
                   {link.label}
                 </a>
               </li>
@@ -82,6 +107,7 @@ export function MenuBar() {
           </ul>
         </nav>
         <div className="flex items-center gap-3.5 whitespace-nowrap">
+          <BookCallPill href="#calendar" />
           <button
             type="button"
             aria-label="React Native Dev Menu"

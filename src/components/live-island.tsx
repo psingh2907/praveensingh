@@ -29,7 +29,7 @@ const fade = {
 // The front phone's Dynamic Island boots first: the boot screen in miniature,
 // a ⌘ and a filling bar, drawn by the server and animated in CSS so it plays
 // from first paint. Then it grows into a live activity saying Praveen is
-// available. Tap it and Praveen calls you: accept opens the Mail window,
+// available. Tap it and Praveen calls you: accept opens the Calendar to book a call,
 // decline leaves a missed call. On Android phones it really buzzes.
 export function LiveIsland() {
   const [mode, setMode] = useState<Mode>("boot");
@@ -149,10 +149,10 @@ export function LiveIsland() {
               <button
                 ref={accept}
                 type="button"
-                aria-label="Accept, and write to Praveen"
+                aria-label="Accept, and book a call with Praveen"
                 onClick={() => {
                   setMode("live");
-                  openWindow("contact");
+                  openWindow("calendar");
                 }}
                 className={`${round} bg-[#30d158]`}
               >

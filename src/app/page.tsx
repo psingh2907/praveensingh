@@ -3,6 +3,7 @@ import { Command } from "@phosphor-icons/react/ssr";
 import { allPosts } from "@/blog";
 import { About } from "@/components/about";
 import { BlogWindow } from "@/components/blog-window";
+import { CalendarWindow } from "@/components/calendar-window";
 import { Contact } from "@/components/contact";
 import { Deferred } from "@/components/deferred";
 import { DesktopIcons } from "@/components/desktop-icons";
@@ -55,6 +56,7 @@ export default async function Home() {
         <Recommendations className="md:w-[70%] md:self-end" />
         <Faq className="md:w-[76%] md:self-start" />
         <Contact className="md:w-[74%] md:self-center" />
+        <CalendarWindow className="md:w-[86%] md:self-end" />
         <SiteFooter />
       </main>
       <Dock blog={posts.length > 0} />

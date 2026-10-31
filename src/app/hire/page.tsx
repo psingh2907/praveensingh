@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DownloadSimple, EnvelopeSimple, LinkedinLogo } from "@phosphor-icons/react/ssr";
+import { CalendarBlank, DownloadSimple, EnvelopeSimple, LinkedinLogo } from "@phosphor-icons/react/ssr";
+import { BookingPanel } from "@/components/booking";
 import { JsonLd } from "@/components/json-ld";
 import { PageShell } from "@/components/page-shell";
 import { about, hire, process, recommendations, site } from "@/content";
@@ -68,6 +69,13 @@ export default function Hire() {
           >
             <EnvelopeSimple size={18} weight="bold" aria-hidden />
             Email me
+          </a>
+          <a
+            href="#book"
+            className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-hairline bg-surface px-6 py-3 text-[15px] font-medium text-accent transition-colors hover:bg-surface-2"
+          >
+            <CalendarBlank size={18} weight="bold" aria-hidden />
+            Book a call
           </a>
           <a
             href={site.linkedin}
@@ -150,6 +158,17 @@ export default function Hire() {
             {recommendation.relation}.
           </figcaption>
         </figure>
+
+        <section id="book" className="mt-12">
+          <h2 className={heading}>Book a call</h2>
+          <p className="mt-3 max-w-[62ch] text-muted">
+            A 15-minute intro for a role or a quick question, or 30 minutes for a project. Times show in your time
+            zone, and the invite has the video link.
+          </p>
+          <div className="mt-4">
+            <BookingPanel />
+          </div>
+        </section>
 
         <section id="faq" className="mt-12">
           <h2 className={heading}>Questions</h2>

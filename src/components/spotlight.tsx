@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AppleLogo,
+  CalendarBlank,
   AppWindow,
   ArrowClockwise,
   Atom,
@@ -58,6 +59,7 @@ const items: Item[] = [
   { group: "Windows", label: "Help", Icon: Question, keywords: "faq questions answers hire available", run: () => openWindow("faq") },
   { group: "Windows", label: "Notes", Icon: Notebook, keywords: "blog posts articles writing", run: () => openWindow("blog") },
   { group: "Windows", label: "New Message", Icon: EnvelopeSimple, keywords: "contact mail email hire", run: () => openWindow("contact") },
+  { group: "Windows", label: "Book a call", Icon: CalendarBlank, keywords: "calendar call meeting schedule book cal interview", run: () => openWindow("calendar") },
   ...projects.map((p) => ({
     group: "Apps",
     label: p.name,

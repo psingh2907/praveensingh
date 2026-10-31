@@ -12,6 +12,7 @@ import {
 } from "motion/react";
 import {
   AppWindow,
+  CalendarBlank,
   ChatCircleText,
   EnvelopeSimple,
   FilePdf,
@@ -53,6 +54,7 @@ const apps: App[] = [
   { href: "#about", section: "about", label: "About", Icon: IdentificationBadge, tile: "from-[#c89b6d] to-[#8a5a33] text-white" },
   { href: "#recommendations", section: "recommendations", label: "Recommendations", Icon: ChatCircleText, tile: "from-[#6ee27a] to-[#28b33a] text-white", wideOnly: true },
   { href: "#contact", section: "contact", label: "Mail", Icon: EnvelopeSimple, tile: "from-[#5ac8fa] to-[#0a84ff] text-white" },
+  { href: "#calendar", section: "calendar", label: "Calendar", Icon: CalendarBlank, tile: "from-white to-[#e5e5ea] text-[#ff3b30]", light: true, wideOnly: true },
 ];
 
 const links: App[] = [

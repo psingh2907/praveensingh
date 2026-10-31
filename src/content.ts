@@ -27,6 +27,11 @@ export const site = {
   github: "https://github.com/psingh2907",
   linkedin: "https://www.linkedin.com/in/praveens2/",
   devto: "https://dev.to/praveensingh",
+  // Cal.com event types, shown in the Calendar window and on /hire.
+  booking: [
+    { minutes: 15, label: "15 min intro", url: "https://cal.com/praveen-singh-ilhdlp/15min" },
+    { minutes: 30, label: "30 min call", url: "https://cal.com/praveen-singh-ilhdlp/30min" },
+  ],
   resume: "/Praveen_Singh_Senior_React_Native_Developer.pdf",
   vcard: "/praveen-singh.vcf",
   // 512px square crop. The share image and contact card use their own copies
@@ -49,7 +54,7 @@ export const site = {
 export const availability = {
   short: "Open to work",
   notification:
-    "Open to Senior React Native and mobile roles, and can join immediately. Remote, hybrid or on-site. Want to talk?",
+    "Open to Senior React Native and mobile roles, and can join immediately. Remote, hybrid or on-site. Book a 15-min call?",
 };
 
 export const hero = {
@@ -771,7 +776,7 @@ export const hire = {
     {
       question: "How do I hire Praveen Singh?",
       answer:
-        "Email praveen.codeit@gmail.com or message Praveen on LinkedIn at linkedin.com/in/praveens2 with a few lines about the role or project. He replies within 24 hours.",
+        "Email praveen.codeit@gmail.com or message Praveen on LinkedIn at linkedin.com/in/praveens2 with a few lines about the role or project; he replies within 24 hours. Or book a 15-minute intro or a 30-minute call straight into his calendar at praveensingh.co.in/hire.",
     },
   ],
 };

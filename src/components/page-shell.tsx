@@ -1,6 +1,7 @@
 import { ViewTransition } from "react";
 import Link from "next/link";
 import { site } from "@/content";
+import { BookCallPill } from "./book-call-pill";
 import { DocumentWindow } from "./document-window";
 import { Effects } from "./effects";
 import { SiteFooter } from "./site-footer";
@@ -23,7 +24,13 @@ type PageShellProps = {
 // look as the desktop, but a single window that reads like a document, so
 // it loads fast for visitors arriving from search. The page is server
 // rendered; only the window's traffic lights run on the client.
-export function PageShell({ title, crumbs, children, wide = false, titleBarExtra }: PageShellProps) {
+export function PageShell({
+  title,
+  crumbs,
+  children,
+  wide = false,
+  titleBarExtra,
+}: PageShellProps) {
   const links = [
     { href: "/#work", label: "Work" },
     { href: "/blog", label: "Blog" },
@@ -45,31 +52,63 @@ export function PageShell({ title, crumbs, children, wide = false, titleBarExtra
             </Link>
             <ul className="ml-auto flex items-center gap-3 sm:ml-2 sm:gap-5">
               {links.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href} className="rounded px-1 py-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/15">
+                // On phones the Book a call pill stands in for Contact.
+                <li
+                  key={link.href}
+                  className={
+                    link.href === "/#contact"
+                      ? "hidden sm:list-item"
+                      : undefined
+                  }
+                >
+                  <Link
+                    href={link.href}
+                    className="rounded px-1 py-0.5 transition-colors hover:bg-black/10 dark:hover:bg-white/15"
+                  >
                     {link.label}
                   </Link>
                 </li>
               ))}
             </ul>
+            <span className="sm:ml-auto">
+              <BookCallPill href="/hire#book" />
+            </span>
           </nav>
         </header>
       </ViewTransition>
 
       {/* Opens like a macOS window when you arrive (globals.css, "Page changes"). */}
       <ViewTransition enter="window-open" exit="window-close" default="none">
-        <main className={`mx-auto flex w-full ${wide ? "max-w-5xl" : "max-w-4xl"} flex-1 flex-col gap-6 px-3 pb-16 pt-12 md:px-6 md:pt-16`}>
-          <nav aria-label="Breadcrumb" className="glass self-start rounded-full px-4 py-1.5 text-[13px]">
+        <main
+          className={`mx-auto flex w-full ${wide ? "max-w-5xl" : "max-w-4xl"} flex-1 flex-col gap-6 px-3 pb-16 pt-12 md:px-6 md:pt-16`}
+        >
+          <nav
+            aria-label="Breadcrumb"
+            className="glass self-start rounded-full px-4 py-1.5 text-[13px]"
+          >
             <ol className="flex flex-wrap items-center gap-1.5">
               {crumbs.map((crumb, i) => (
-                <li key={crumb.path} className="flex min-w-0 items-center gap-1.5">
-                  {i > 0 && <span aria-hidden className="text-muted">/</span>}
+                <li
+                  key={crumb.path}
+                  className="flex min-w-0 items-center gap-1.5"
+                >
+                  {i > 0 && (
+                    <span aria-hidden className="text-muted">
+                      /
+                    </span>
+                  )}
                   {i === crumbs.length - 1 ? (
-                    <span aria-current="page" className="block max-w-[13rem] truncate font-medium sm:max-w-md">
+                    <span
+                      aria-current="page"
+                      className="block max-w-[13rem] truncate font-medium sm:max-w-md"
+                    >
                       {crumb.name}
                     </span>
                   ) : (
-                    <Link href={crumb.path} className="text-muted hover:text-accent">
+                    <Link
+                      href={crumb.path}
+                      className="text-muted hover:text-accent"
+                    >
                       {crumb.name}
                     </Link>
                   )}

@@ -35,7 +35,11 @@ export function Contact({ className }: { className?: string }) {
         <div className="px-6 pt-8 md:px-10">
           <h2 data-split className="text-3xl font-semibold tracking-tighter md:text-4xl">Hiring, or building an app?</h2>
           <p className="mt-2 text-muted">
-            Tell me about the role or the product. I reply within 24 hours.
+            Tell me about the role or the product. I reply within 24 hours. Prefer to talk?{" "}
+            <a href="#calendar" className="font-medium text-accent hover:underline">
+              Book a call
+            </a>
+            .
           </p>
         </div>
 
