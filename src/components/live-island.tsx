@@ -8,17 +8,22 @@ import { bootDelay, openWindow } from "@/lib/desktop";
 
 type Mode = "boot" | "live" | "ringing" | "missed";
 
+// Sizes are fractions of the phone screen (cqh/cqw of the island layer in
+// phone.tsx), widths included, so a tap animates every edge and corner
+// smoothly: mixing rounded-full or percentages with px made the island jump
+// before it grew. Compact states are a little taller than Apple's island and
+// centred on it (3.37% down the screen, where the camera is).
 const sizes: Record<Mode, string> = {
-  boot: "h-[22px] w-[40%] rounded-[11px] md:h-[26px] md:rounded-[13px]",
-  live: "h-[22px] w-[86%] rounded-[11px] md:h-[26px] md:rounded-[13px]",
-  missed: "h-[22px] w-[86%] rounded-[11px] md:h-[26px] md:rounded-[13px]",
-  ringing: "h-14 w-[94%] rounded-[26px] md:h-16 md:rounded-[30px]",
+  boot: "top-[1.07cqh] h-[4.6cqh] w-[44cqw] rounded-[2.3cqh]",
+  live: "top-[1.07cqh] h-[4.6cqh] w-[60cqw] rounded-[2.3cqh]",
+  missed: "top-[1.07cqh] h-[4.6cqh] w-[60cqw] rounded-[2.3cqh]",
+  ringing: "top-[1.07cqh] h-[11.5cqh] w-[94cqw] rounded-[4.6cqh]",
 };
 
 const fade = {
   initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { delay: 0.12 } },
-  exit: { opacity: 0, transition: { duration: 0.1 } },
+  animate: { opacity: 1, transition: { duration: 0.2, delay: 0.15 } },
+  exit: { opacity: 0, transition: { duration: 0.08 } },
 };
 
 // The front phone's Dynamic Island boots first: the boot screen in miniature,
@@ -33,7 +38,10 @@ export function LiveIsland() {
   useEffect(() => {
     const next: Partial<Record<Mode, [Mode, number]>> = {
       // The bar fills in about 1.1s from navigation; hydration may land later.
-      boot: ["live", Math.max(300, (bootDelay() + 1.2) * 1000 - performance.now())],
+      boot: [
+        "live",
+        Math.max(300, (bootDelay() + 1.2) * 1000 - performance.now()),
+      ],
       ringing: ["missed", 12000],
       missed: ["live", 3500],
     };
@@ -54,83 +62,140 @@ export function LiveIsland() {
     } catch {}
   }
 
-  const round = "flex h-7 w-7 shrink-0 items-center justify-center rounded-full md:h-9 md:w-9";
+  const round =
+    "flex aspect-square h-[64cqh] shrink-0 items-center justify-center rounded-full";
+  // A compact Live Activity: the leading slot ends before the camera (which
+  // sits 61% across the island when it's 60% of the screen wide), the
+  // trailing slot sits right of it.
+  const leading =
+    "absolute inset-y-0 left-[6%] right-[42%] flex min-w-0 items-center gap-[22cqh]";
+  const trailing =
+    "absolute inset-y-0 left-[70%] right-[7%] flex items-center justify-end";
 
   return (
-    <div
-      className={`absolute left-1/2 top-2.5 z-10 -translate-x-1/2 overflow-hidden bg-black text-white transition-[width,height,border-radius] duration-500 ease-[cubic-bezier(0.34,1.4,0.64,1)] motion-reduce:transition-none ${sizes[mode]}`}
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        {mode === "boot" && (
-          <motion.div key="boot" aria-hidden {...fade} className="flex h-full w-full items-center gap-1.5 px-2.5">
-            <Command weight="bold" className="h-2.5 w-2.5 shrink-0 md:h-3 md:w-3" />
-            <span className="island-boot-bar flex-1" />
-          </motion.div>
-        )}
-
-        {mode === "live" && (
-          <motion.button
-            key="live"
-            type="button"
-            onClick={ring}
-            aria-label={`${availability.short}. Tap for a call from ${site.name}`}
-            {...fade}
-            className="flex h-full w-full min-w-0 items-center gap-1.5 px-2.5"
-          >
-            <span aria-hidden className="live-dot h-1.5 w-1.5 shrink-0 rounded-full bg-[#30d158]" />
-            <span className="truncate text-[9px] font-medium md:text-[11px]">{availability.short}</span>
-          </motion.button>
-        )}
-
-        {mode === "ringing" && (
-          <motion.div
-            key="ringing"
-            role="group"
-            aria-label={`Incoming call from ${site.name}`}
-            {...fade}
-            className="flex h-full w-full items-center gap-1.5 pl-3 pr-2 md:gap-2 md:pl-4 md:pr-2.5"
-          >
-            <span className="min-w-0 flex-1 leading-tight">
-              <span className="block text-[8px] text-white/55 md:text-[10px]">mobile</span>
-              <span className="block truncate text-[10px] font-semibold md:text-[12px]">{site.name}</span>
-            </span>
-            <button
-              type="button"
-              aria-label="Decline"
-              onClick={() => setMode("missed")}
-              className={`${round} bg-[#ff3b30]`}
+    <>
+      <div
+        className={`absolute left-1/2 z-10 -translate-x-1/2 overflow-hidden bg-black text-white [container-type:size] transition-[width,height,border-radius] duration-[400ms] ease-[cubic-bezier(0.2,0.9,0.25,1)] motion-reduce:transition-none ${sizes[mode]}`}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          {mode === "boot" && (
+            <motion.div
+              key="boot"
+              aria-hidden
+              {...fade}
+              className="absolute inset-0"
             >
-              <PhoneDisconnect weight="fill" aria-hidden className="h-[55%] w-[55%]" />
-            </button>
-            <button
-              ref={accept}
-              type="button"
-              aria-label="Accept, and write to Praveen"
-              onClick={() => {
-                setMode("live");
-                openWindow("contact");
-              }}
-              className={`${round} bg-[#30d158]`}
-            >
-              <Phone weight="fill" aria-hidden className="ring-wiggle h-[55%] w-[55%]" />
-            </button>
-          </motion.div>
-        )}
+              <span className={leading}>
+                <Command
+                  weight="bold"
+                  className="h-[48cqh] w-[48cqh] shrink-0"
+                />
+              </span>
+              <span className={trailing}>
+                <span className="island-boot-bar w-full" />
+              </span>
+            </motion.div>
+          )}
 
-        {mode === "missed" && (
-          <motion.button
-            key="missed"
-            type="button"
-            onClick={ring}
-            aria-label="Missed call. Call back"
-            {...fade}
-            className="flex h-full w-full min-w-0 items-center gap-1.5 px-2.5"
-          >
-            <PhoneX weight="fill" aria-hidden className="h-3 w-3 shrink-0 text-[#ff453a] md:h-3.5 md:w-3.5" />
-            <span className="truncate text-[9px] font-medium md:text-[11px]">Missed call</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-    </div>
+          {mode === "live" && (
+            <motion.button
+              key="live"
+              type="button"
+              onClick={ring}
+              aria-label={`${availability.short}. Tap for a call from ${site.name}`}
+              {...fade}
+              className="absolute inset-0"
+            >
+              <span className={leading}>
+                <span className="truncate text-[45cqh] font-semibold leading-none text-white">
+                  {availability.short}
+                </span>
+              </span>
+              <span className={trailing}>
+                <span
+                  aria-hidden
+                  className="live-dot h-[36cqh] w-[36cqh] rounded-full bg-[#30d158]"
+                />
+              </span>
+            </motion.button>
+          )}
+
+          {mode === "ringing" && (
+            <motion.div
+              key="ringing"
+              role="group"
+              aria-label={`Incoming call from ${site.name}`}
+              {...fade}
+              className="flex h-full w-full items-center gap-[10cqh] pl-[22cqh] pr-[14cqh]"
+            >
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block text-[17cqh] text-white/55">mobile</span>
+                <span className="block truncate text-[22cqh] font-semibold">
+                  {site.name}
+                </span>
+              </span>
+              <button
+                type="button"
+                aria-label="Decline"
+                onClick={() => setMode("missed")}
+                className={`${round} bg-[#ff3b30]`}
+              >
+                <PhoneDisconnect
+                  weight="fill"
+                  aria-hidden
+                  className="h-[55%] w-[55%]"
+                />
+              </button>
+              <button
+                ref={accept}
+                type="button"
+                aria-label="Accept, and write to Praveen"
+                onClick={() => {
+                  setMode("live");
+                  openWindow("contact");
+                }}
+                className={`${round} bg-[#30d158]`}
+              >
+                <Phone
+                  weight="fill"
+                  aria-hidden
+                  className="ring-wiggle h-[55%] w-[55%]"
+                />
+              </button>
+            </motion.div>
+          )}
+
+          {mode === "missed" && (
+            <motion.button
+              key="missed"
+              type="button"
+              onClick={ring}
+              aria-label="Missed call. Call back"
+              {...fade}
+              className="absolute inset-0"
+            >
+              <span className={leading}>
+                <span className="truncate text-[45cqh] font-semibold leading-none text-[#ff453a]">
+                  Missed call
+                </span>
+              </span>
+              <span className={trailing}>
+                <PhoneX
+                  weight="fill"
+                  aria-hidden
+                  className="h-[54cqh] w-[54cqh] text-[#ff453a]"
+                />
+              </span>
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
+      {/* The front camera, where Apple's bezel has it (56.6% across, 3.35% down the
+        screen), so it stays visible through the island as on a real phone. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-[56.6%] top-[3.35%] z-20 aspect-square w-[3%] -translate-1/2 rounded-full bg-[radial-gradient(circle_at_40%_40%,#2a3a66_0%,#111a33_35%,#05070d_70%)] ring-1 ring-white/5"
+      />
+    </>
   );
 }
