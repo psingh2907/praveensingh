@@ -1,4 +1,5 @@
 import { hero, projects, site } from "@/content";
+import { HeroDemo } from "./hero-demo";
 import { LiveIsland } from "./live-island";
 import { Phone } from "./phone";
 import { Window } from "./window";
@@ -71,7 +72,8 @@ export function Hero() {
           )}
         </div>
 
-        <div className="relative mx-auto -mb-24 h-[400px] w-full max-w-[400px] md:h-[520px] lg:col-span-5 lg:h-[560px] lg:self-end">
+        {/* Tall enough for both phones in full, with room below them inside the window. */}
+        <div className="relative mx-auto mb-10 h-[440px] w-full max-w-[400px] md:mb-12 md:h-[520px] lg:col-span-5 lg:mb-14 lg:h-[560px] lg:self-center">
           <div data-parallax="back" className="absolute right-0 top-0 w-[52%]">
             <div className="rise-fade rise-spring" style={enter(0.25, 60)}>
               {/* One iPhone, one Android: the same React Native work on both. */}
@@ -92,6 +94,7 @@ export function Hero() {
                 sizes="(min-width: 1024px) 250px, 55vw"
                 preload
                 island={<LiveIsland />}
+                overlay={<HeroDemo />}
               />
             </div>
           </div>
