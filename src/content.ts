@@ -246,7 +246,7 @@ export const projects: Project[] = [
       {
         heading: "Faster data with a normalized Apollo cache",
         paragraphs: [
-          "Reevo's screens read cards, balances and transactions over GraphQL. I reworked the Apollo Client data flows around normalized state and caching, so a screen reuses what the app already has instead of asking again. API responses got about 30% faster.",
+          "Reevo's screens read cards, balances and transactions over GraphQL. I reworked the Apollo Client data flows around normalized state and caching, so a screen reuses what the app already has instead of asking again. GraphQL latency fell from about 650ms to 450ms.",
         ],
       },
       {
@@ -279,7 +279,7 @@ export const projects: Project[] = [
     retired: "The card product has since been retired. Numbers are from its production builds.",
     placeholder: { kind: "card", caption: "a credit card app: card, balance, transactions and payments" },
     metrics: [
-      { label: "API response", before: "~850ms", after: "~595ms", change: "−30%" },
+      { label: "GraphQL latency", before: "~650ms", after: "450ms", change: "−31%" },
       { label: "Frame drops", before: "9.2%", after: "3.8%", change: "−58%" },
       { label: "Production bugs", before: "~32", after: "11", change: "−66%" },
     ],
@@ -496,7 +496,7 @@ export const experience: Job[] = [
     company: "Delightree",
     title: "Senior React Native Developer",
     start: "Mar 2026",
-    end: "Aug 2026",
+    end: "Jul 2026",
     place: "Remote",
     points: [
       "Built offline-first audit and checklist flows with media capture and queued sync.",
@@ -674,7 +674,7 @@ export const faq = [
   {
     question: "What results has Praveen delivered?",
     answer:
-      "At upGrad, Praveen cut median cold start from 2.9s to 1.8s and the release cycle from 5 days to 3. On the Reevo credit card app, API responses got about 30% faster with Apollo caching and frame drops fell from 9.2% to 3.8%.",
+      "At upGrad, Praveen cut median cold start from 2.9s to 1.8s and the release cycle from 5 days to 3. On the Reevo credit card app, GraphQL latency fell from about 650ms to 450ms with Apollo caching and frame drops fell from 9.2% to 3.8%.",
   },
   {
     question: "Does Praveen Singh maintain open-source projects?",
