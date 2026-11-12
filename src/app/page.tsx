@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Command } from "@phosphor-icons/react/ssr";
 import { allPosts } from "@/blog";
 import { About } from "@/components/about";
+import { ActivityWindow } from "@/components/activity-window";
 import { BlogWindow } from "@/components/blog-window";
 import { CalendarWindow } from "@/components/calendar-window";
 import { Contact } from "@/components/contact";
@@ -21,14 +22,19 @@ import { SiteFooter } from "@/components/site-footer";
 import { Stack } from "@/components/stack";
 import { Terminal } from "@/components/terminal";
 import { Work } from "@/components/work";
+import { getActivity } from "@/lib/activity";
 import { faqPage, profilePage } from "@/lib/seo";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+// The Activity window's npm/GitHub numbers are refreshed at most once a day.
+export const revalidate = 86400;
+
 export default async function Home() {
   const posts = await allPosts();
+  const activity = await getActivity(posts);
 
   return (
     <>
@@ -47,6 +53,7 @@ export default async function Home() {
         <Hero />
         <Work />
         <OpenSourceWork labs={posts.flatMap(({ slug, title, repo }) => (repo ? [{ slug, title, repo }] : []))} />
+        <ActivityWindow activity={activity} className="md:w-[80%] md:self-end" />
         <Experience />
         <Stack />
         <Terminal className="md:w-[72%] md:self-start" />

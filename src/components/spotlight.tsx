@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
   AppleLogo,
+  Bell,
   CalendarBlank,
   AppWindow,
   ArrowClockwise,
@@ -50,6 +51,7 @@ const items: Item[] = [
   { group: "Windows", label: "Welcome", Icon: House, keywords: "home top intro", run: () => openWindow("top") },
   { group: "Windows", label: "Selected Work", Icon: AppWindow, keywords: "projects apps portfolio finder", run: () => openWindow("work") },
   { group: "Windows", label: "Open Source", Icon: GitBranch, keywords: "bareship github npm template repos labs code", run: () => openWindow("open-source") },
+  { group: "Windows", label: "Activity", Icon: Bell, keywords: "notifications lately recent releases downloads npm commits news", run: () => openWindow("activity") },
   { group: "Windows", label: "Experience", Icon: FilePdf, keywords: "resume cv jobs career upgrad gojoko delightree invia webmobril", run: () => openWindow("experience") },
   { group: "Windows", label: "Tools", Icon: Wrench, keywords: "stack skills launchpad", run: () => openWindow("tools") },
   { group: "Windows", label: "Terminal", Icon: TerminalWindow, keywords: "shell zsh cli", run: () => openWindow("terminal") },
