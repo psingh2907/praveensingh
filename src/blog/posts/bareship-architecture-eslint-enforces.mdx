@@ -1,0 +1,255 @@
+export const meta = {
+  title: "Code review shouldn't catch import rules: a React Native architecture ESLint enforces",
+  description:
+    "How Bareship turns its architecture into lint errors: layers and feature boundaries, rules that each came from a real bug, and error messages written so a teammate or an AI agent can fix the code alone.",
+  published: "2026-11-22",
+  tags: ["React Native", "Architecture", "Open source"],
+  platforms: ["iOS", "Android"],
+  seoTitle: "React Native architecture ESLint enforces",
+  seoDescription:
+    "Bareship's React Native architecture is checked by ESLint and dependency-cruiser: layers, feature boundaries, translations, right-to-left and the React Compiler.",
+  repo: "https://github.com/psingh2907/bareship",
+  mentions: [
+    { name: "Bareship", url: "https://bareship.praveensingh.co.in" },
+    { name: "ESLint", url: "https://eslint.org/" },
+    { name: "eslint-plugin-boundaries", url: "https://github.com/javierbrea/eslint-plugin-boundaries" },
+    { name: "dependency-cruiser", url: "https://github.com/sverweij/dependency-cruiser" },
+    { name: "React Compiler", url: "https://react.dev/learn/react-compiler" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+  ],
+};
+
+<ShortAnswer>
+  Bareship writes its architecture down as lint errors instead of a wiki page. ESLint checks that imports go one
+  way through five layers and that features never import each other, and dependency-cruiser checks the whole
+  graph again in CI. Other rules each came from a real bug: hard-coded text, `left`/`right` styles that don't
+  mirror in right-to-left languages, and calls the React Compiler caches. Every error message says how to fix it
+  and links the decision behind it, so a teammate or an AI agent can fix the code without asking anyone.
+</ShortAnswer>
+
+This is Part 3 of Building Bareship. [Part 2](/blog/bareship-offline-write-queue) covered the offline queue and
+ended with a promise: an architecture the linter enforces.
+
+Every React Native project starts with folders and good intentions. Someone draws the layers on a whiteboard,
+everyone agrees, and it holds for a few weeks. Then a settings screen borrows a hook from the feed because it's
+quicker, a string skips translation because it's "temporary", and the person who knew the rules is on leave. Code
+review is supposed to catch this, but reviewers are looking at whether the feature works, not at import paths.
+
+So in Bareship the rules are errors. They show up in the editor while you type, block the commit, and fail CI.
+
+## One file, three errors
+
+Here's a small screen I wrote to break the rules on purpose. It sits in the settings feature, shows how many
+pages of posts the feed has loaded, and adds a little margin:
+
+```tsx title="src/features/settings/screens/ProfileCard.tsx"
+import { View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
+
+import { useFeed } from '@/features/feed/api';
+import { Text } from '@/shared/ui/primitives/Text';
+
+export function ProfileCard() {
+  const feed = useFeed();
+  return (
+    <View style={styles.card}>
+      <Text>Your posts: {feed.data?.pages.length}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({ card: { marginLeft: 16 } });
+```
+
+It type-checks and it runs. ESLint says no, three times:
+
+```text
+src/features/settings/screens/ProfileCard.tsx
+   4:25  error  Layer rule broken. Imports go app → features → entities → data → shared,
+                and features never import each other (docs/decisions/0005)   boundaries/dependencies
+  11:13  error  disallow literal string: <Text>Your posts: {feed.data?.pages.length}</Text>
+                                                                              i18next/no-literal-string
+  16:44  error  Use start/end (marginStart, paddingEnd, start, borderStartWidth…) so the layout
+                mirrors in right-to-left languages (ADR 0017)                  no-restricted-syntax
+
+✖ 3 problems (3 errors, 0 warnings)
+```
+
+And dependency-cruiser, which CI runs over the whole import graph, catches the first one again:
+
+```text
+  error features-are-isolated: src/features/settings/screens/ProfileCard.tsx → src/features/feed/api.ts
+
+x 1 dependency violations (1 errors, 0 warnings). 226 modules, 722 dependencies cruised.
+```
+
+None of these would have broken a test. Each one costs real time later: the settings feature now breaks when the
+feed changes, the text can't be translated, and the margin is on the wrong side in Arabic or Urdu.
+
+## Layers, and features that don't know each other
+
+The code in `src/` is split into five layers, and imports only go down:
+
+| Layer | Holds | May import |
+| --- | --- | --- |
+| `app` | Navigation, boot, providers | everything below |
+| `features` | One folder per feature: screens, hooks, API calls | `entities`, `data`, `shared`, and only itself |
+| `entities` | Domain models more than one feature needs, such as the session and the user | `data`, `shared` |
+| `data` | The query client, the offline queue, storage | `shared` |
+| `shared` | UI primitives, the HTTP client, i18n, config | `shared` |
+
+The rule that matters most is the one in the middle row: **a feature never imports another feature**. If the
+settings screen needs the feed's data, that's a sign the shared part belongs lower down, in `entities` or `shared`.
+Then you can delete or rewrite the feed without touching settings, which is also how `pnpm strip-examples` can
+remove the whole demo with one command.
+
+[eslint-plugin-boundaries](https://github.com/javierbrea/eslint-plugin-boundaries) enforces this in the editor.
+The whole policy is generated from one list, so the order of the layers is written down exactly once:
+
+```js title="eslint.config.mjs"
+const LAYERS = ['app', 'features', 'entities', 'data', 'shared'];
+
+'boundaries/dependencies': ['error', {
+  default: 'disallow',
+  message:
+    'Layer rule broken. Imports go app → features → entities → data → shared, and features never import each other (docs/decisions/0005).',
+  policies: LAYERS.map((layer, i) => ({
+    from: { element: { type: layer } },
+    allow: [
+      // Every layer below this one.
+      ...LAYERS.slice(i + 1).map(type => ({ to: { element: { type } } })),
+      // Within the same layer: a feature only into itself; other layers freely.
+      layer === 'features'
+        ? { to: { element: { type: 'features', captured: { feature: '{{ from.element.captured.feature }}' } } } }
+        : { to: { element: { type: layer } } },
+    ],
+  })),
+}],
+```
+
+Two more import rules sit on top. `app` may use a feature only through its `index.ts`, its public API, and never
+reach into its files. And nobody imports a folder's `index.ts` barrel inside the layers: barrels caused require
+cycles and loaded more than a screen needed. Removing them touched 29 files, and the Android release bundle went
+from 3,831 to 3,824 KB.
+
+[dependency-cruiser](https://github.com/sverweij/dependency-cruiser) checks the same layer rules a second time, over
+the whole graph at once. It also catches what a per-file linter can't see: import cycles across many files, and app
+code that imports a dev dependency, such as a test or mock tool that should never ship in the app.
+
+## Rules that each came from a bug
+
+The layer rules came from a plan. Most of the others came from something that went wrong, and I added the rule so
+it couldn't happen twice:
+
+| Rule | The bug behind it |
+| --- | --- |
+| No `formatRelative(date)` or `formatDate(…)` directly in JSX | After switching to Hindi, "2 days ago" stayed in English. The React Compiler had cached the call, which didn't know the language changed. Components use `useFormat()` instead. |
+| No `left`/`right`, `marginLeft`, `paddingRight` and friends in styles | Physical sides don't flip in right-to-left languages; `start`/`end` do. |
+| No `textAlign: 'left'` or `'right'` | On iOS, text in a mirrored row stayed on the left ([#21](https://github.com/psingh2907/bareship/pull/21)). |
+| No `useVariants` from Unistyles | The React Compiler memoized the style array without knowing the variant changed, so the old one stayed on screen: a focus border that never cleared. A style function, `styles.field(state)`, stays correct. |
+| No icons from the `lucide-react-native` root | Metro can't tree-shake, so a root import bundles every icon. Icons come from one module each. |
+| ARIA props only (`role`, `aria-label`…), not `accessibilityRole` and friends | One way to write it, which is also what agents that read the screen as text understand. |
+| No hard-coded text in JSX | Every word goes through `t('…')`, so a new language is a new file, not a hunt through screens. |
+
+On top of these, the 15 React Compiler rules from `eslint-plugin-react-hooks` are all errors, not warnings.
+
+Most of the table needs no plugin. ESLint's built-in `no-restricted-syntax` takes an AST selector and a message,
+which is enough for a lot of house rules:
+
+```js title="eslint.config.mjs"
+// Physical sides don't flip in right-to-left languages; start/end do (ADR 0017).
+{
+  selector:
+    'Property[key.name=/^(left|right|(margin|padding)(Left|Right)|border(Top|Bottom)?(Left|Right)(Width|Color|Radius)?)$/]',
+  message:
+    'Use start/end (marginStart, paddingEnd, start, borderStartWidth…) so the layout mirrors in right-to-left languages (ADR 0017).',
+},
+```
+
+If you only take one idea from this post, take this one: when a bug comes from a pattern, a ten-line lint rule
+stops the whole class of bug, in every file, for every future developer.
+
+## Error messages that teach
+
+Look at the messages again. None of them just says "not allowed". Each one says what to do instead, and most
+name the decision record that explains why: `docs/decisions/0005`, `ADR 0017`, `AGENTS.md › Styling`.
+
+That matters for people: a new teammate fixes the code from the message, without asking anyone or opening a wiki.
+It matters even more for AI coding agents. I built much of Bareship with Claude Code, and an agent reads a lint
+error far more reliably than it remembers a paragraph of guidelines. `AGENTS.md` has one line about these rules:
+"Fix the import, never disable the rule." When the agent broke a rule, the fix went into the linter or its
+message, not into a comment on a pull request. The next agent, or the next person, then gets the right answer from
+the tool.
+
+## Where the rules run
+
+The same rules run in four places, from fastest to last line of defence:
+
+1. **In the editor**, as you type.
+2. **On every commit**: a pre-commit hook runs `eslint --fix --max-warnings=0` on the staged files.
+3. **`pnpm check`**: types, lint, formatting, dependency-cruiser and tests in one command.
+4. **CI on every pull request**, where the lint and dependency checks are required before anything reaches `main`.
+
+## What it costs
+
+The first week with rules like these feels strict. A quick fix you'd normally push needs a moment's thought about
+where the code belongs. After that, nobody has to remember the rules, and review is about the feature again.
+
+The rules also have to cover your own tools. The `formatRelative` rule arrived in 0.2, but the feature generator
+kept writing a list screen that called it. So in 0.4.0, `pnpm gen feature` produced code its own linter rejected.
+Nothing ran the generators end to end, so nobody noticed until I tried one while writing a post. 0.4.1 fixed the
+template and added `scripts/ci/check-generators.sh`, which runs every generator on a scratch copy and checks the
+result for types, lint, formatting, boundaries and tests.
+
+And sometimes a rule is wrong for your app. Then you change it in one place, in `eslint.config.mjs`, and write
+down why in a decision record next to the others. That's the point: a rule you disagree with is a conversation
+about one line of config, not about whose turn it is to be strict in review.
+
+## Try it
+
+```bash
+npx create-bareship Acme
+cd Acme
+pnpm lint
+```
+
+Paste the `ProfileCard` above into `src/features/settings/screens/` and run `pnpm lint` again to see the three
+errors. `pnpm depcruise` shows the graph check.
+
+- Config: [`eslint.config.mjs`](https://github.com/psingh2907/bareship/blob/main/eslint.config.mjs) and
+  [`.dependency-cruiser.cjs`](https://github.com/psingh2907/bareship/blob/main/.dependency-cruiser.cjs)
+- The rules in plain words: [Project rules](https://bareship.praveensingh.co.in/build/project-rules/)
+- The decision: [ADR 0005, architecture and boundaries](https://bareship.praveensingh.co.in/reference/decisions/0005-architecture-and-boundaries/)
+
+**Next in the series:** a package manager that refuses packages younger than three days, and the rest of
+Bareship's supply-chain rules.
+
+If one of these rules would get in your way, or you have one I should add, leave a comment on dev.to or open an
+issue.
+
+## FAQ
+
+### How do you enforce architecture layers in a React Native app?
+
+Use `eslint-plugin-boundaries` to define each folder as a layer and allow imports only to the layers below it,
+and run `dependency-cruiser` in CI to check the whole import graph, including cycles.
+
+### How do you stop one feature folder importing another?
+
+Give each feature its own element in `eslint-plugin-boundaries`, captured by folder name, and allow imports within
+the same feature only. Code two features need moves down to a shared layer.
+
+### Can ESLint catch React Native right-to-left layout bugs?
+
+Yes. `no-restricted-syntax` with a selector on style keys can reject `left`, `right`, `marginLeft` and similar,
+and suggest `start` and `end`, which mirror in right-to-left languages.
+
+<Takeaways
+  items={[
+    "Bareship's five layers import downward only, and features never import each other; ESLint and dependency-cruiser both check it.",
+    "Generate the boundaries policy from one ordered list, so the layer order is written down once.",
+    "Most house rules need no plugin: no-restricted-syntax with an AST selector and a clear message is enough.",
+    "Every error message names the fix and the decision behind it, which is what lets an AI agent fix its own code.",
+    "Rules must cover your own generators too: Bareship 0.4.1 added a check that runs every generator and checks its output.",
+  ]}
+/>
