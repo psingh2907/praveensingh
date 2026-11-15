@@ -24,6 +24,12 @@ const TAGS = {
   "react-native-app-intents-appfunctions": ["reactnative", "ios", "ai", "expo"],
   "offline-first-react-native-data-layer": ["reactnative", "mobile", "architecture", "database"],
   "react-native-0-87-upgrade": ["reactnative", "mobile", "javascript", "performance"],
+  "bareship-offline-write-queue": ["reactnative", "mobile", "javascript", "opensource"],
+};
+
+// Posts that belong to a dev.to series (shown as a box linking the parts).
+const SERIES = {
+  "bareship-offline-write-queue": "Building Bareship",
 };
 
 const readState = () => (fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, "utf8")) : {});
@@ -85,6 +91,7 @@ async function article(slug) {
     description,
     body_markdown: `${converted.trim()}\n\n${footer}\n`,
     tags: TAGS[slug] ?? [],
+    series: SERIES[slug],
     canonical_url: url,
     main_image: `${url}/opengraph-image`,
   };

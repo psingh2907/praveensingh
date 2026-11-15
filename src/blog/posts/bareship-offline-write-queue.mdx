@@ -1,0 +1,273 @@
+export const meta = {
+  title: "An offline write queue for React Native, and the two reader questions that changed it",
+  description:
+    "How Bareship keeps a like made offline: saved through a restart, sent once with an idempotency key, never sent for the wrong account, and what happens when the server says no.",
+  published: "2026-11-15",
+  tags: ["React Native", "Offline-first", "Open source"],
+  platforms: ["iOS", "Android"],
+  seoTitle: "An offline write queue in React Native",
+  seoDescription:
+    "How Bareship's React Native offline queue survives restarts, applies each write once with idempotency keys, checks the account and handles rejected writes.",
+  repo: "https://github.com/psingh2907/bareship",
+  mentions: [
+    { name: "Bareship", url: "https://bareship.praveensingh.co.in" },
+    { name: "TanStack Query", url: "https://tanstack.com/query" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+    { name: "MMKV", url: "https://github.com/mrousavy/react-native-mmkv" },
+  ],
+};
+
+<ShortAnswer>
+  Bareship queues offline writes with TanStack Query: a paused mutation is saved to MMKV, so it survives the app
+  being killed, and replays in order when the phone reconnects. Every write gets an `Idempotency-Key` when the user
+  taps, reused for every attempt, so the server applies it once. Since 0.4.0, each write also records the account
+  that made it and is never sent for anyone else, and a write can cancel the dependent writes queued behind it if
+  the server rejects it.
+</ShortAnswer>
+
+In the [launch post](/blog/introducing-bareship) I said Bareship saves a like made offline, keeps it through a
+restart and sends it once when the phone reconnects, and promised the next post would show how.
+
+Two readers on dev.to then asked questions I hadn't fully answered. [Dave Kurian](https://dev.to/davekurian)
+asked whose write it is when someone else signs in before it's sent. [Odd Eggs Studio](https://dev.to/oddeggs)
+asked what happens to the writes behind one the server rejects. Both answers are now code, released in
+[0.4.0](https://github.com/psingh2907/bareship/releases/tag/v0.4.0). This post walks through the queue from the tap
+to the server, with those two changes in the places they belong.
+
+![On Android: airplane mode on, a like is saved and marked "Waiting to sync", then sent when the phone is back online](https://www.praveensingh.co.in/blog/introducing-bareship/offline-sync.gif)
+
+## What can go wrong with one like
+
+Someone likes a post on a train with no signal. Before that like reaches your server, any of these can happen:
+
+1. The user swipes the app away, or the OS kills it.
+2. The request goes out, the connection drops before the answer comes back, and the app tries again. Now the
+   server has seen it twice.
+3. They like, then unlike. The two requests arrive in the wrong order.
+4. They sign out and someone else signs in on the same phone. The like is still waiting.
+5. The server refuses the like for good, and three edits that depend on it are queued behind it.
+
+A queue that only handles the first one still looks fine in a demo. The other four show up later, in bug reports
+you can't reproduce. (For the wider design questions, such as a local database, conflicts and photo uploads, see my
+[offline-first data layer post](/blog/offline-first-react-native-data-layer). This one is about the write queue
+only.)
+
+## The base: TanStack Query, with the gaps filled
+
+Bareship doesn't have its own queue engine. TanStack Query already does most of the work:
+
+- A mutation with `networkMode: 'online'` **pauses** while the phone is offline instead of failing, and resumes
+  when the connection returns.
+- Paused mutations can be **saved** with the query cache. Bareship stores that cache in MMKV, so a waiting write
+  survives the app being killed.
+- Mutations that share a **scope** run one at a time, in the order they were made. That handles problem 3.
+
+The gap is in what gets saved. A restored mutation is only data: its key and its variables. The functions that
+send it and update the screen aren't saved, because you can't save a function. TanStack Query looks them up by
+the mutation's key in the defaults registered on the client. If nothing is registered yet when the saved cache
+comes back, the write fails with "No mutationFn found".
+
+In React Native that's easy to get wrong. Metro loads modules lazily, so the feature that defines the like may not
+have run yet when the cache is restored at startup. Bareship fixes this with one file, `src/app/queued-writes.ts`,
+which imports every module that defines a queued write and is imported before the cache is restored. A test fails
+if a definition is missing from it. A write whose definition really is gone, say removed in an app update, is
+dropped and logged at startup instead of crashing.
+
+From the feature's side, a queued write is one definition at module level:
+
+```ts title="src/features/feed/api.ts"
+const likeKey = ['posts', 'like'] as const;
+
+export const useToggleLike = defineQueuedMutation<Post, { postId: string; like: boolean }>({
+  mutationKey: likeKey,
+  mutationFn: ({ postId, like, idempotencyKey }) => {
+    const url = `/posts/${encodeURIComponent(postId)}/like`;
+    return like
+      ? http.post(url, PostSchema, { idempotencyKey })
+      : http.delete(url, PostSchema, { idempotencyKey });
+  },
+  onMutate: async ({ postId, like }) => {
+    await queryClient.cancelQueries({ queryKey: postKeys.all });
+    updatePost(queryClient, postId, applyLike(like)); // show it at once
+  },
+  onError: (_error, { postId, like }) => {
+    updatePost(queryClient, postId, applyLike(!like)); // undo it
+    toast.error(i18n.t('feed.likeFailed'));
+  },
+  onSuccess: (updated, { postId }) => {
+    // A like then an unlike queued offline: keep the optimistic state until the last one lands.
+    if (hasLaterWrite(likeKey, variables => variables.postId === postId)) return;
+    updatePost(queryClient, updated.id, () => updated);
+  },
+});
+```
+
+The cache work lives in these callbacks, not in the screen, because after a restart the screen that started the
+write is gone. The variables are saved as JSON, so they stay small: ids and flags, not whole objects.
+
+The "Waiting to sync" label comes from the paused writes themselves. `useWaitingWrites(likeKey)` returns the
+variables of every like still waiting, and the banner under the header counts them. Nothing is tracked twice.
+
+## Sent twice, applied once: idempotency keys
+
+Problem 2 can't be solved on the phone alone. If the connection drops after the server got the request, the app
+can't know whether the like landed. It has to try again, so the server has to recognise a repeat.
+
+Every queued write gets an `Idempotency-Key` (a random UUID) **when the user taps**, not when the request is sent.
+That one key goes with every attempt:
+
+- The HTTP client retries network errors, timeouts, 408, 429 and 5xx with backoff, up to 3 attempts in all. It
+  reuses the key each time.
+- A write replayed after a restart reuses the key.
+- A write the server already answered is never sent again.
+
+On the server, the rule is to store the first response for each key and return it for repeats. Here's the mock
+backend that ships with the template, which does exactly that for likes:
+
+```ts title="src/mocks/handlers.ts"
+const key = request.headers.get('Idempotency-Key');
+const replay = key ? db.idempotency.get(key) : undefined;
+if (replay) return HttpResponse.json(replay); // seen it: same answer, applied once
+
+// ...apply the like...
+const body = postDto(post, user.id);
+if (key) db.idempotency.set(key, body);
+return HttpResponse.json(body);
+```
+
+One limit, written down in the code: a write that's already on the wire when the app dies isn't saved, because
+it's no longer paused. Its key still makes a manual retry safe.
+
+## Question 1: whose write is it?
+
+Dave's question was about problem 4. A like is queued, the user signs out, someone else signs in, the phone
+reconnects. Does the first user's like go out with the second user's token?
+
+My answer at the time was "no, because sign-out clears the queue". That was true, but the guarantee lived in the
+sign-out flow. Any future change there, like account switching or a sign-out that fails halfway, could break it
+without anyone noticing. Dave suggested storing the account next to the key, and he was right.
+
+Now each write records who made it:
+
+```ts title="src/data/offline.ts"
+mutate: variables =>
+  mutation.mutate({ ...variables, idempotencyKey: createId(), accountId: currentAccount() }),
+```
+
+It's checked twice. The first check is when the saved queue comes back after a restart. The second is just before
+each write is sent, because the account can change while a write waits offline:
+
+```ts title="src/data/offline.ts"
+mutationFn: variables => {
+  if (!belongsToCurrentAccount(variables)) throw new OtherAccountWriteError();
+  return mutationFn(variables);
+},
+```
+
+A write from another account is dropped and logged. It never reaches the server, and it doesn't call the
+feature's `onError`, so the new user doesn't see someone else's rollback or error message. Writes saved by older
+versions have no account id and replay as before.
+
+The server side matters too: keep idempotency keys per user, so a replayed key can never match another account's
+record. That's now in the docs.
+
+## Question 2: what if the server says no?
+
+Odd Eggs Studio asked about problem 5. If a queued write is rejected, does the queue stop or carry on?
+
+It carries on, and for likes that's right: each like stands alone, so one refused like shouldn't block the next.
+But some writes depend on each other. "Create a draft, then edit it" is the usual example. If the create fails,
+sending the edit only produces a second error, and the screen is left showing a draft that doesn't exist.
+
+So `defineQueuedMutation` now takes `onRejected`:
+
+```ts title="src/features/drafts/api.ts"
+export const useCreateDraft = defineQueuedMutation<Draft, { draftId: string; title: string }>({
+  mutationKey: ['drafts', 'create'],
+  scope: 'drafts',
+  onRejected: 'cancel-scope', // if this fails for good, drop the drafts writes queued behind it
+  mutationFn: …,
+});
+
+export const useEditDraft = defineQueuedMutation<Draft, { draftId: string; body: string }>({
+  mutationKey: ['drafts', 'edit'],
+  scope: 'drafts',
+  mutationFn: …,
+  onError: (error, { draftId }) => {
+    // Runs for a cancelled edit too (error.kind === 'cancelled'): undo its optimistic update.
+  },
+});
+```
+
+The details that took the most thought:
+
+- **"Fails for good"** means the server refused the write, or it still failed after the HTTP client's retries.
+  Going offline isn't a failure: the queue just pauses.
+- **Each cancelled write gets its own `onError`**, with an error of kind `'cancelled'`. Every write rolls back its
+  own optimistic update, so the screen ends up correct without the failed write having to know what came after it.
+- **Only writes already queued are cancelled.** Something the user does after the failure runs normally.
+- **The limit:** if the app is killed between the failure and the next launch, the cancellation isn't remembered.
+  The writes behind it go out and fail on their own, as they did before. I wrote this down in the docs instead of
+  adding more machinery for a rare case.
+
+## What I took from this
+
+Both changes came from comments on a launch post. Each one turned into an issue, a change with tests, a docs
+section and a release. Two things stood out to me:
+
+- **Put a guarantee in the data, not in a flow.** "Sign-out clears the queue" was true, but it depended on code far
+  from the queue. "Every write knows its account" stays true whatever happens elsewhere.
+- **Default to the simple behaviour, and make the strict one a single line.** Most writes are independent, so
+  `'continue'` stays the default. The chains that need more get `'cancel-scope'`, and the limit is written next to
+  it.
+
+## Try it
+
+```bash
+npx create-bareship Acme
+cd Acme
+pnpm android   # or: pnpm ios
+```
+
+Sign in with `demo@example.com` / `password123`, turn on airplane mode, like a post, close the app, open it again,
+then turn airplane mode off. The like is sent once. The mock backend runs inside the app, so you don't need a
+server for any of this.
+
+- Queue code: [`src/data/offline.ts`](https://github.com/psingh2907/bareship/blob/main/src/data/offline.ts)
+- Guide: [Offline](https://bareship.praveensingh.co.in/build/offline/) and
+  [writes that depend on each other](https://bareship.praveensingh.co.in/build/architecture/#writes-that-depend-on-each-other)
+- The two changes: [#28](https://github.com/psingh2907/bareship/pull/28) (account) and
+  [#29](https://github.com/psingh2907/bareship/pull/29) (`onRejected`)
+
+**Next in the series:** an architecture the linter enforces. Layers and feature boundaries that ESLint checks, so
+code review doesn't have to.
+
+If you have a question like Dave's or Odd Eggs Studio's, leave it in the comments on dev.to or open an issue. Two of
+them have already made the template better.
+
+## FAQ
+
+### How does Bareship keep offline writes after the app is killed?
+
+Queued writes are TanStack Query mutations that pause while offline. Paused mutations are saved with the query
+cache in MMKV and replayed in order on the next launch, once every write's definition is registered.
+
+### How does Bareship stop a write from being applied twice?
+
+Each write gets an `Idempotency-Key` when the user taps, and every retry or replay sends the same key. The server
+stores the first response for each key and returns it for repeats.
+
+### Can a queued write be sent under another user's account?
+
+No. Since 0.4.0 each write records the account that made it, and it's checked on restore and before every send.
+A write from another account is dropped and logged, without calling the feature's error handler.
+
+<Takeaways
+  items={[
+    "Bareship's offline queue is TanStack Query paused mutations, saved to MMKV and replayed in order after a restart.",
+    "Register every queued write's definition before the saved cache is restored: Metro loads modules lazily.",
+    "One Idempotency-Key per write, made when the user taps and reused for every attempt, so the server applies it once.",
+    "Each queued write records its account and is checked on restore and before every send (0.4.0).",
+    "onRejected: 'cancel-scope' drops the dependent writes behind a rejected one, and each rolls back its own update.",
+  ]}
+/>
