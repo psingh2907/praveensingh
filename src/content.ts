@@ -39,7 +39,7 @@ export const site = {
   photo: "/praveen.webp",
   location: "Noida, India",
   description:
-    "Praveen Singh is a Senior React Native Engineer with 5+ years shipping high-performance Android and iOS apps across fintech, edtech and telecom.",
+    "Praveen Singh is a Senior React Native Engineer with 5+ years shipping iOS and Android apps for upGrad, Delightree and Reevo, and the author of Bareship.",
   // "Developer" is how most people search for the role, so the page title
   // and search snippets use it; the rest of the site says "Engineer".
   searchTitle: "Praveen Singh, Senior React Native Developer (iOS and Android)",
@@ -47,7 +47,7 @@ export const site = {
   // Not a secret: it's in every page's requests.
   gaId: "G-7DSJS5TTGJ",
   // Bump when the content changes; the sitemap reports it to search engines.
-  updated: "2026-10-30",
+  updated: "2026-11-20",
 };
 
 // Shown in the hero phone's Dynamic Island and the desktop notification.
