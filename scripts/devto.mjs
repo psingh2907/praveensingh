@@ -26,12 +26,14 @@ const TAGS = {
   "react-native-0-87-upgrade": ["reactnative", "mobile", "javascript", "performance"],
   "bareship-offline-write-queue": ["reactnative", "mobile", "javascript", "opensource"],
   "bareship-architecture-eslint-enforces": ["reactnative", "architecture", "eslint", "javascript"],
+  "bareship-supply-chain-pnpm": ["reactnative", "security", "npm", "opensource"],
 };
 
 // Posts that belong to a dev.to series (shown as a box linking the parts).
 const SERIES = {
   "bareship-offline-write-queue": "Building Bareship",
   "bareship-architecture-eslint-enforces": "Building Bareship",
+  "bareship-supply-chain-pnpm": "Building Bareship",
 };
 
 const readState = () => (fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, "utf8")) : {});

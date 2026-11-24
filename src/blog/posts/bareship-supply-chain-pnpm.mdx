@@ -1,0 +1,304 @@
+export const meta = {
+  title: "A React Native template that won't install a package younger than three days",
+  description:
+    "Bareship's supply-chain rules: pnpm refuses fresh releases, denies install scripts, blocks packages whose trust level drops, and pins exact versions. What each one stops, what it costs, and what it doesn't cover.",
+  published: "2026-11-24",
+  tags: ["React Native", "Security", "Open source"],
+  platforms: ["iOS", "Android"],
+  seoTitle: "pnpm supply-chain rules for React Native",
+  seoDescription:
+    "How Bareship protects a React Native app from npm supply-chain attacks with pnpm: minimumReleaseAge, denied install scripts, trustPolicy, exact versions and Renovate.",
+  repo: "https://github.com/psingh2907/bareship",
+  mentions: [
+    { name: "Bareship", url: "https://bareship.praveensingh.co.in" },
+    { name: "pnpm", url: "https://pnpm.io/supply-chain-security" },
+    { name: "Renovate", url: "https://docs.renovatebot.com/" },
+    { name: "npm", url: "https://www.npmjs.com/" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+  ],
+};
+
+<ShortAnswer>
+  Bareship keeps its supply-chain policy in one file, `pnpm-workspace.yaml`. pnpm won't install a version until it
+  has been public for three days, runs no install scripts unless a package is on an allow list, and refuses a
+  release whose trust level dropped compared with earlier ones, such as a package that used to be published from
+  CI and suddenly isn't. Versions are exact, Renovate waits the same three days, and CI installs from the lockfile
+  only. It doesn't cover CocoaPods, Gradle or GitHub Actions, and the post says where those gaps are.
+</ShortAnswer>
+
+This is Part 4 of Building Bareship. [Part 3](/blog/bareship-architecture-eslint-enforces) made the architecture
+a set of lint errors. This one is about the code you didn't write: the 1,272 package versions in Bareship's lockfile.
+
+## Why three days
+
+Most npm attacks of the last two years followed the same shape. Someone gets a maintainer's token, usually by
+phishing, and publishes a new version of a popular package with something extra in it. In September 2025 that
+happened to about 18 packages, `chalk` and `debug` among them, with billions of weekly downloads between them. The bad
+versions were found and removed in about two hours. A week later the Shai-Hulud worm went further: its install
+script stole the victim's npm and GitHub tokens and used them to publish itself into every package that person
+maintained. Hundreds of packages were hit before it was stopped, and a second wave followed in November.
+
+Two things stand out. The bad versions were new, and they were found fast, usually within hours, by the security
+companies that scan every release. And the damage happened at install time, through install scripts, before
+anyone ran the app.
+
+So the two cheapest defences are: don't install anything brand new, and don't let packages run code when you
+install them.
+
+## The policy file
+
+All of it lives in `pnpm-workspace.yaml`, next to the lockfile:
+
+```yaml title="pnpm-workspace.yaml"
+# pnpm policy — see docs/decisions/0003-package-manager-and-supply-chain.md
+nodeLinker: hoisted
+
+# `pnpm add` writes exact versions (AGENTS.md › Agent skills). Renovate pins too.
+savePrefix: ''
+
+# Don't install a version until it has been public for 3 days (minutes).
+minimumReleaseAge: 4320
+minimumReleaseAgeExclude: []
+
+# Fail if a package's trust level drops compared with earlier releases.
+trustPolicy: no-downgrade
+# Versions older than 30 days (minutes) predate provenance or have been vetted;
+# the check targets fresh takeovers.
+trustPolicyIgnoreAfter: 43200
+# Reviewed exceptions. Each needs a reason and a date.
+trustPolicyExclude:
+  # 2026-10-10: Expo's tooling packages (@expo/config-plugins and its deps) are
+  # published by the same maintainer account without provenance on every
+  # 56.x/57.x release. Pulled in only by react-native-bootsplash's config plugin.
+  - '@expo/*'
+
+# Install scripts are denied unless listed `true` here.
+allowBuilds:
+  '@firebase/util': false
+  protobufjs: false
+  # Platform binary arrives as an optional dependency; postinstall not needed.
+  esbuild: false
+  # Native binding arrives as an optional dependency (@unrs/resolver-binding-*).
+  unrs-resolver: false
+  # Copies the browser service worker into public/; React Native doesn't use it.
+  msw: false
+```
+
+`nodeLinker: hoisted` isn't a security setting. It gives a flat `node_modules`, which Metro, CocoaPods and Gradle
+autolinking all expect. The rest is.
+
+## What it looks like when pnpm says no
+
+I copied that file into an empty folder and tried it with pnpm 12.3.4 on 24 November 2026. TypeScript publishes a
+`dev` build every night, so there's always a version from this morning to test with:
+
+```text
+$ pnpm add typescript@7.1.0-dev.20261124.1
+Error: ERR_PNPM_NO_MATURE_MATCHING_VERSION
+
+  × adding a new package
+  ╰─▶ 8 versions do not meet the minimumReleaseAge constraint:
+        @typescript/typescript-darwin-arm64@7.1.0-dev.20261124.1 was published
+      at 2026-11-24T08:18:11.550Z, within the minimumReleaseAge cutoff (2026-
+      11-21T14:52:50.768Z)
+      …
+  help: Run the install interactively to approve these picks, add them to
+        minimumReleaseAgeExclude in pnpm-workspace.yaml, or wait for the
+        packages to mature.
+```
+
+Asking for an exact version that's too new fails. Asking for a tag or a range doesn't fail: pnpm quietly picks
+the newest version that's old enough. `pnpm add typescript@next` installed `7.1.0-dev.20261121.1`, the build from
+three days earlier, not today's.
+
+In the same empty folder without the policy file, the same `pnpm add` installed this morning's build without a
+word. The setting is what makes the difference.
+
+Install scripts are the second check. `core-js` has a `postinstall` script:
+
+```text
+$ pnpm add core-js@3.47.0
+dependencies:
++ core-js 3.47.0
+
+Error: ERR_PNPM_IGNORED_BUILDS
+
+  × adding a new package
+  ╰─▶ Ignored build scripts: core-js@3.47.0
+  help: Run "pnpm approve-builds" to pick which dependencies should be allowed
+        to run scripts.
+```
+
+The package is installed, its script didn't run, and the command fails so you can't miss it. This one pnpm 12
+does even without the policy file. What the file adds is the decision written down: each package that has a
+script is listed, `true` or `false`, with a comment saying why.
+
+## Install scripts: none allowed
+
+The list in Bareship has five entries, all `false`. Not one package in a full React Native app with Firebase,
+Reanimated, Skia and MMKV needs to run a script at install time:
+
+- `esbuild` and `unrs-resolver` download a native binary in their scripts, but pnpm already installs the same
+  binary as an optional dependency for your platform.
+- `@firebase/util` and `protobufjs` have scripts that do work React Native never uses.
+- `msw` copies a service worker into `public/` for browsers. The app uses MSW in tests, not in a browser.
+
+That matters because the install script is exactly where Shai-Hulud ran. If a package Bareship depends on is
+taken over and gains a `postinstall`, pnpm doesn't run it. Nobody has to notice anything for that to be true.
+
+Native code is a different story: React Native's native modules are built by CocoaPods and Gradle later, not by
+npm scripts. More on that under "what this doesn't cover".
+
+## Trust that can only go up
+
+The third check is newer. More packages are now published from CI with
+[npm's trusted publishing](https://docs.npmjs.com/trusted-publishers): GitHub Actions publishes the release, and
+npm records where it came from. pnpm ranks each version: trusted publisher, then provenance only, then nothing.
+With `trustPolicy: no-downgrade`, a version that ranks lower than the releases before it is refused.
+
+That's the shape of a stolen token. If `react-native-mmkv` has been published from CI for a year and version
+`x.y.z+1` arrives from someone's laptop with no provenance, something changed, and pnpm stops instead of finding
+out the hard way.
+
+Two settings keep it practical:
+
+- `trustPolicyIgnoreAfter: 43200` skips the check for versions older than 30 days. Old releases often predate
+  provenance, and a takeover is about new versions anyway.
+- `trustPolicyExclude` holds reviewed exceptions. There's one: `@expo/*`. Expo's tooling packages, which come in
+  only through `react-native-bootsplash`'s config plugin, are published without provenance on every release by the
+  same maintainer, so the check would fail on every install without telling me anything. The comment has a date,
+  so the next person can check whether it's still true.
+
+## Exact versions, and an agent rule
+
+`package.json` used `^` ranges at first. The lockfile already fixes what gets installed, but a range still lets
+`pnpm add` and `pnpm update` move to anything newer. In October I pinned every dependency to the version already in
+the lockfile, no version changed, and set `savePrefix: ''`, so `pnpm add` writes `1.2.3`, not `^1.2.3`.
+
+The release-age check only protects installs that go through pnpm and this file. `npx some-tool@latest` doesn't.
+AI coding agents love that command, so `AGENTS.md` has a rule for it:
+
+> Installs: pnpm with exact versions (`pnpm add x@1.2.3`, `pnpm dlx x@1.2.3`). Never `npx …@latest`: it skips the
+> supply-chain policy in `pnpm-workspace.yaml`.
+
+## Updates without a fresh-release risk
+
+Pinning everything only works if updating is cheap. [Renovate](https://docs.renovatebot.com/) opens the update pull
+requests:
+
+```json title="renovate.json"
+{
+  "extends": ["config:recommended", ":semanticCommits"],
+  "schedule": ["before 6am on monday"],
+  "minimumReleaseAge": "3 days",
+  "rangeStrategy": "pin",
+  "packageRules": [
+    { "groupName": "React Native core", "matchPackageNames": ["react-native", "react", "@react-native/**"] },
+    { "groupName": "Reanimated and worklets", "matchPackageNames": ["react-native-reanimated", "react-native-worklets"] },
+    {
+      "groupName": "Dev tooling",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    }
+  ]
+}
+```
+
+(Shortened; the real file has five groups.) Renovate waits the same three days as pnpm, so it never opens a
+pull request that pnpm would then refuse. It runs once a week, and packages that must move together, like React
+Native and its `@react-native/*` packages, come as one pull request. Only minor and patch updates to dev tools merge
+on their own, after CI passes. Anything that ships in the app waits for a person.
+
+CI then installs with `pnpm install --frozen-lockfile`: if the lockfile and `package.json` disagree, the build
+fails instead of resolving something new on a CI machine.
+
+## What it costs
+
+**An urgent fix can't come in for three days.** If a dependency ships a security fix today, you have to add it to
+`minimumReleaseAgeExclude` on purpose, and that's one reviewed line in a pull request. It's the right amount of
+friction for something that should be rare. So far the exclude list is still empty.
+
+**New packages need a moment.** When you add a dependency with an install script, pnpm stops and asks. Most of the
+time the answer is `false`, and you write down why.
+
+**Contributors need pnpm.** `packageManager` in `package.json` pins the version through Corepack, and
+`create-bareship` checks for pnpm before it starts.
+
+## What this doesn't cover
+
+A React Native app has more than one package manager, and this policy covers only the JavaScript one:
+
+- **CocoaPods and Gradle.** Pods and Android libraries come with their own lockfiles (`Podfile.lock`, Gradle's
+  resolved versions), but neither has a release-age or trust check like pnpm's. Most native code arrives through
+  npm packages anyway, which the policy does check, but their own native dependencies don't.
+- **Ruby gems.** CocoaPods and fastlane come from `Gemfile.lock`, pinned but not age-checked.
+- **GitHub Actions.** The workflows use tags such as `actions/checkout@v7`, not commit hashes. A moved tag would
+  change what CI runs. The workflow has read-only `contents` permissions, which limits the damage, but pinning to
+  hashes is still on the list.
+- **The first command.** `npx create-bareship Acme` runs before the policy exists. The installer has no
+  dependencies of its own, only Node built-ins, and pins the React Native CLI to an exact version. From `pnpm install`
+  on, the app's policy applies.
+
+## Not only pnpm
+
+Release age on its own isn't special to pnpm anymore. npm has `min-release-age` (in days, since 11.10), Yarn has
+`npmMinimalAgeGate` (in minutes, since 4.10), and Bun has `minimumReleaseAge` in `bunfig.toml` (in seconds). Check
+the unit before you copy a number between them. If you use one of those, turn it on today; it's one line.
+
+I picked pnpm because it has all of it in one file: release age, a per-package list for install scripts, and the
+trust check, which I haven't found in the others. And the hoisted `node_modules` works with the native build tools.
+
+## Try it
+
+```bash
+npx create-bareship Acme
+cd Acme
+pnpm add typescript@next
+```
+
+Look at the version that lands in `package.json`: not tonight's build, the one from three days ago.
+
+- The policy: [`pnpm-workspace.yaml`](https://github.com/psingh2907/bareship/blob/main/pnpm-workspace.yaml) and
+  [`renovate.json`](https://github.com/psingh2907/bareship/blob/main/renovate.json)
+- The decision: [ADR 0003, pnpm and supply-chain policy](https://bareship.praveensingh.co.in/reference/decisions/0003-package-manager-and-supply-chain/)
+- pnpm's own guide: [Mitigating supply chain attacks](https://pnpm.io/supply-chain-security)
+
+If you've had a release-age rule get in the way, or know a good way to cover CocoaPods, leave a comment on dev.to
+or open an issue.
+
+## FAQ
+
+### How do I stop pnpm installing brand-new npm versions?
+
+Set `minimumReleaseAge` in `pnpm-workspace.yaml`, in minutes. `4320` is three days. An exact version that's too
+new fails with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`; a range or tag resolves to the newest version that's old
+enough. Exceptions go in `minimumReleaseAgeExclude`.
+
+### Does a React Native app need npm install scripts?
+
+Bareship's doesn't. Native modules are built by CocoaPods and Gradle, not by install scripts, and packages like
+`esbuild` get their binaries as optional dependencies. Bareship lists every package that has a script under
+`allowBuilds` and sets all of them to `false`.
+
+### What does pnpm's trustPolicy no-downgrade do?
+
+It refuses a version whose publishing evidence is weaker than earlier releases of the same package, for example a
+release without provenance after releases from a trusted publisher. That's what a stolen maintainer token often
+looks like.
+
+### Does minimumReleaseAge protect CocoaPods or Gradle dependencies?
+
+No. It only covers packages pnpm installs. Pods and Android libraries are pinned by their own lockfiles but have no
+release-age or trust check.
+
+<Takeaways
+  items={[
+    "Most npm attacks arrive as brand-new versions and run through install scripts, so refuse both.",
+    "minimumReleaseAge: 4320 makes pnpm wait three days; ranges quietly resolve to an older, mature version.",
+    "Bareship allows no install scripts at all; each package that has one is listed false with a reason.",
+    "trustPolicy: no-downgrade refuses a release that suddenly lost its provenance, the shape of a stolen token.",
+    "Pin exact versions, let Renovate wait the same three days, and install with --frozen-lockfile in CI.",
+    "The policy covers JavaScript only: CocoaPods, Gradle, gems and GitHub Actions need their own answer.",
+  ]}
+/>
