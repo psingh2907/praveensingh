@@ -1,0 +1,307 @@
+export const meta = {
+  title: "Photo uploads that survive airplane mode: offline uploads in React Native",
+  description:
+    "How Bareship uploads photos through its offline write queue: the system picker, files kept by id, one idempotency key per upload, a generator that writes it for you, and the bug that testing it on a phone found in the queue itself.",
+  published: "2026-11-25",
+  tags: ["React Native", "Offline", "Open source"],
+  platforms: ["iOS", "Android"],
+  seoTitle: "Offline photo uploads in React Native",
+  seoDescription:
+    "Offline photo uploads in a bare React Native app: pick, resize, keep the file, queue the upload with TanStack Query, retry with one idempotency key, and show progress without re-rendering a list.",
+  repo: "https://github.com/psingh2907/bareship",
+  mentions: [
+    { name: "Bareship", url: "https://bareship.praveensingh.co.in" },
+    { name: "TanStack Query", url: "https://tanstack.com/query" },
+    { name: "react-native-image-picker", url: "https://github.com/react-native-image-picker/react-native-image-picker" },
+    { name: "react-native-file-access", url: "https://github.com/alpha0010/react-native-file-access" },
+    { name: "react-native-permissions", url: "https://github.com/zoontek/react-native-permissions" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+  ],
+};
+
+<ShortAnswer>
+  In Bareship 0.5, a photo upload is a queued write like a like is: it waits offline, survives the app being
+  killed, waits again if the connection drops halfway, and retries with one idempotency key so the server stores
+  the photo once. The photo comes from the system picker (no permission), is resized on the phone, and is kept in
+  the app's documents folder under an id, not a path. `pnpm gen upload` writes all of it for a new screen. Testing
+  it on a phone found a bug in the queue itself: writes saved offline could be dropped at the next launch.
+</ShortAnswer>
+
+This is Part 5 of Building Bareship. [Part 2](/blog/bareship-offline-write-queue) built the offline write queue
+with a like as the example. A like is a few bytes and an id. A photo is a file of several megabytes that has to
+still exist when the app opens tomorrow. That's where offline support usually breaks in real apps, so it's what
+0.5 is about.
+
+## What can go wrong with one photo
+
+Someone on a train takes a photo for a post and taps Post. Here's what has to go right:
+
+1. **The connection drops halfway through.** Most apps show an error and the photo is gone.
+2. **They lock the phone and the app is killed.** An upload held in memory dies with it.
+3. **The photo was in a temporary folder.** iOS clears `tmp` when the app isn't running.
+4. **The photo is 8 MB of HEIC.** Slow, expensive on mobile data, and some backends can't read it.
+5. **The upload reached the server, but the response didn't reach the phone.** A retry stores it twice.
+6. **The app was updated while the upload waited.** On iOS, the app's folder gets a new path, and a saved absolute
+   path points nowhere.
+
+The last one I only learned while building this. Each fix is small; the work is making sure none of them is
+missing.
+
+## Pick and resize, without a permission
+
+The library uses the system picker: PHPicker on iOS and the Photo Picker on Android. Both run outside the app and
+hand back only the photo the person chose, so the app asks for no photo permission at all. The picker also resizes
+and re-encodes natively, so a full-size image never reaches JavaScript:
+
+```ts title="src/shared/adapters/image-picker-photo-picker.ts"
+const common = {
+  mediaType: 'photo' as const,
+  maxWidth: 2048,
+  maxHeight: 2048,
+  quality: 0.8,
+  // HEIC from iPhones becomes JPEG, which every backend and browser can show.
+  assetRepresentationMode: 'compatible' as const,
+};
+```
+
+A 12-megapixel photo comes out around 300 KB.
+
+The camera is different on each platform. iOS needs a usage string and asks the person, so Bareship explains
+first with the sheet from 0.4.2. Android needs no permission: the system camera app takes the photo.
+
+<Gotcha title="Declaring CAMERA on Android makes it worse">
+  If your app declares `android.permission.CAMERA` in its manifest and the person hasn't granted it, Android refuses
+  the camera intent with a `SecurityException`. Taking a photo through the system camera app works without the
+  permission, so Bareship doesn't declare it.
+</Gotcha>
+
+## Keep the file, by id
+
+The picked photo sits in a temporary folder, so before anything is queued it's copied into the app's documents
+folder, which the system never clears. The queue saves an id for it, never a path:
+
+```ts title="src/shared/adapters/file-access-file-store.ts"
+const pathOf = (id: string) => `${Dirs.DocumentDir}/${FOLDER}/${id}`;
+
+keep: async uri => {
+  const id = `${createId()}.jpg`;
+  await FileSystem.cp(toPath(uri), pathOf(id));
+  return id;
+},
+uriOf: id => `file://${pathOf(id)}`,
+```
+
+`Dirs.DocumentDir` is read each time, so after an iOS update moves the app's folder, the id still finds the file.
+After a successful upload the file is deleted.
+
+## The upload is a queued write
+
+From here it's the Part 2 queue. Bareship 0.5 adds `defineQueuedUpload`, which wraps `defineQueuedMutation` for
+files. The demo's post composer uploads the photo, then creates the post with its URL, in one write:
+
+```ts title="src/features/feed/api.ts"
+export const useCreatePost = defineQueuedUpload({
+  mutationKey: ['posts', 'create'],
+  url: (_post: CreatePostVariables) => '/uploads',
+  schema: UploadSchema,
+  id: ({ postId }) => postId,
+  then: (uploaded, { postId, body }, { idempotencyKey, signal }) =>
+    http.post('/posts', PostSchema, {
+      body: { id: postId, body, image_url: uploaded?.url ?? null },
+      idempotencyKey,
+      signal,
+    }),
+  onError: () => toast.error(i18n.t('feed.postFailed')),
+  onSuccess: created => addToFeed(queryClient, created),
+});
+```
+
+Three details do most of the work:
+
+- **Two keys from one.** The upload sends `<key>:upload` and the post sends `<key>`. A retry sends the same two
+  keys, so the server can return its first answer for each instead of storing the photo or the post twice. The
+  post's id is made on the phone for the same reason.
+- **A dropped connection waits instead of failing.** The write has a retry policy for network errors and 5xx
+  responses. TanStack Query pauses a retry while it's offline, so a write that loses the connection halfway goes
+  back to "Waiting to upload" and continues when the phone reconnects. A 4xx is the server saying no, and isn't
+  retried.
+- **Remove can stop it mid-upload.** Each write gets an `AbortSignal`, and Remove aborts it, or takes it out of
+  the queue if it's waiting.
+
+## What the person sees
+
+The post shows at once, with the upload's progress, then becomes a normal post.
+
+![On Android: a new post with its photo dimmed, a progress bar at 83% and Cancel](https://www.praveensingh.co.in/blog/bareship-offline-photo-uploads/uploading.jpg)
+
+Offline, it waits, and the offline banner counts it with the likes:
+
+![On Android in airplane mode: the post with "Waiting to upload" and Remove, under a banner saying one change will sync](https://www.praveensingh.co.in/blog/bareship-offline-photo-uploads/waiting.jpg)
+
+If the server refuses it, it stays, with Try again and Remove:
+
+![On iOS: a post the server refused, with "Couldn't upload this." and Try again and Remove buttons](https://www.praveensingh.co.in/blog/bareship-offline-photo-uploads/failed.jpg)
+
+Progress is the part that could make a list slow: an upload reports progress many times a second. It lives in a
+small Zustand store keyed by write, and only the status row reads it:
+
+```ts title="src/data/uploads.ts"
+export function useUploadProgress(key: string | undefined): number | undefined {
+  return useProgressStore(state => (key ? state.byKey[key] : undefined));
+}
+```
+
+So a progress event re-renders one row, not the feed. The bar's width animates with a Reanimated 4 CSS transition,
+on the UI thread, between events.
+
+## The bug the phone found
+
+I tested the whole flow on an Android emulator: post a photo in airplane mode, force-stop the app, turn airplane
+mode off, open it again. The post was gone. The log said why:
+
+```text
+W ReactNativeJS: [warn] Skipped a queued write made by another account
+```
+
+That's the account check from Part 2, the one that stops a write queued by one person going out under someone
+else's token. It was dropping the write of the person who made it.
+
+On a cold start, TanStack Query restores the saved queue, and when NetInfo reports the connection, it resumes
+paused writes straight away. That could happen before Bareship had restored the session from the Keychain. In
+that window the current account read as nobody, the write's account didn't match nobody, and the write was dropped
+as someone else's. It wasn't only uploads: any write queued offline could be lost the same way, likes included.
+In my earlier tests the session simply won the race.
+
+The fix is to let a restored write wait until the session is known before checking whose it is:
+
+```ts title="src/app/boot.ts"
+const hydrated = useSession.getState().hydrate();
+// A write restored from the saved queue waits until the session is back before the account check.
+setQueueAccount(() => useSession.getState().user?.id ?? null, hydrated);
+await hydrated;
+```
+
+```ts title="src/data/offline.ts"
+mutationFn: async variables => {
+  // A write restored at launch can resume before the session is back: wait for it.
+  await accountKnown;
+  if (!belongsToCurrentAccount(variables)) throw new OtherAccountWriteError();
+  // …
+},
+```
+
+The test for it does what the emulator did: queue a write as `u_1`, then start a "new launch" where the account
+is unknown, bring the connection back first, and only then restore the session. It fails without the fix.
+
+The upload I'd lost in that test came back on its own, by the way. Each upload also keeps a small record in MMKV,
+so a failed one shows after a restart. That record showed the lost post as failed with Try again, hours later, and
+Try again sent it.
+
+<Note title="Why the record and not the cache">
+  The first version kept unsent posts in the feed's cached data. A refresh of the feed replaces that data with
+  the server's, and the server doesn't have the post yet, so a waiting post could vanish from the screen. Unsent
+  posts now come from the upload records, which no refresh touches.
+</Note>
+
+## Two more things only the devices showed
+
+- **New posts appeared off-screen.** FlashList 2 keeps the visible rows still when items are added above them,
+  which is right for chat and wrong here: a post you just wrote landed above the top of the screen. The feed turns
+  that off and scrolls up to your post.
+- **The remove button vanished in dark mode.** A dark icon on a dark overlay. It's now a surface-coloured circle
+  with a hairline border, readable on any photo in either theme.
+
+None of the unit tests could have caught these. All three bugs in this post came from going through the flow by
+hand on a device.
+
+## One command for your own screen
+
+The demo is the example; `pnpm gen upload` writes the same thing for your feature:
+
+```bash
+pnpm gen upload expenses receipt-photo --path /expenses/:id/receipt
+```
+
+It adds `useUploadReceiptPhoto()`, its response schema, the line that registers it so a waiting upload replays
+after a restart, a mock handler and three tests (online, offline, refused). The screen needs about ten lines:
+
+```tsx
+const upload = useUploadReceiptPhoto();
+const receipt = upload.status({ id });
+const progress = useUploadProgress(receipt?.key);
+
+<Button title={t('expenses.addReceipt')} onPress={() => upload.pick('library', { id })} />
+{receipt ? (
+  <UploadStatus state={receipt.state} progress={progress} onRetry={receipt.retry} onRemove={receipt.remove} />
+) : null}
+```
+
+There's an `add-upload` skill too, so Claude Code or Copilot runs the generator and fills in the fields. The
+generator check that came out of [Part 3](/blog/bareship-architecture-eslint-enforces) now generates an upload on
+every pull request and runs its tests, which caught a missing import in the generated code before it shipped.
+
+## What it doesn't do
+
+- **No background uploads.** Uploads run while the app is open and pick up again when it opens. Uploading after
+  the app is closed needs a native background transfer service on each platform.
+- **One photo per upload.** For several, start one upload per photo.
+- **No direct-to-S3 helper.** `defineQueuedUpload` sends the file to your API. For presigned URLs, write a queued
+  write that gets the URL, uploads with `uploadFile`, then saves the record; the guide shows how.
+- **Taking a photo hasn't run on a real iPhone.** The iOS simulator has no camera. The library path is tested on
+  both platforms, the camera on Android.
+- **Waiting uploads are kept for 24 hours**, the queue's saved-cache limit.
+
+## Try it
+
+```bash
+npx create-bareship Acme
+cd Acme
+pnpm android
+```
+
+Sign in with `demo@example.com` / `password123`, tap the pen in the feed's header, add a photo and turn on airplane
+mode before you post. Close the app, turn airplane mode off and open it again.
+
+- The guide: [Photo uploads](https://bareship.praveensingh.co.in/build/uploads/)
+- The code: [`src/data/uploads.ts`](https://github.com/psingh2907/bareship/blob/main/src/data/uploads.ts) and
+  [`src/data/offline.ts`](https://github.com/psingh2907/bareship/blob/main/src/data/offline.ts)
+- The pull requests: [#41](https://github.com/psingh2907/bareship/pull/41) (uploads) and
+  [#42](https://github.com/psingh2907/bareship/pull/42) (the generator and the launch fix)
+
+If you've built offline uploads another way, or want background uploads, leave a comment on dev.to or open an
+issue.
+
+## FAQ
+
+### How do you upload photos offline in React Native?
+
+Make the upload a queued write: keep the photo in the app's documents folder, put its id in the write's variables,
+and upload it in the write's function. With TanStack Query and `networkMode: 'online'`, the write waits while
+offline, and a persisted cache brings it back after a restart.
+
+### How do you stop a retried upload storing the photo twice?
+
+Send an `Idempotency-Key` header that stays the same for every attempt of one upload, and have the server return
+its first response when it sees a key again. Bareship derives the upload's key from the write's key.
+
+### Does picking a photo need a permission in React Native?
+
+Not with the system picker. PHPicker on iOS and the Photo Picker on Android return only the photo the person
+chooses, so the app needs no photo library permission. The camera needs one on iOS; on Android, the system camera
+app takes the photo without one.
+
+### Why do saved file paths break on iOS?
+
+The app's container folder can get a new path when the app is updated, so an absolute path saved before the update
+points nowhere afterwards. Save a relative id and join it to the documents folder each time you read it.
+
+<Takeaways
+  items={[
+    "An upload is a queued write: keep the file, put its id in the write, and the offline queue does the rest.",
+    "Use the system photo picker: no permission to ask for, and it resizes natively before JavaScript sees the image.",
+    "Save file ids, not paths: iOS moves the app's folder on updates.",
+    "One idempotency key per upload, derived from the write's key, so a retry never stores the photo twice.",
+    "Restored writes must wait for the session before an account check, or they can be dropped as someone else's.",
+    "Unit tests didn't find the three worst bugs here; going through the flow on a device did.",
+  ]}
+/>
