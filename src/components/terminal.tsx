@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useInView, useReducedMotion } from "motion/react";
 import { about, experience, projects, site, stack } from "@/content";
 import { openWindow, setWallpaper, wallpapers, type WallpaperId } from "@/lib/desktop";
-import { getDev, openDevMenu, reload, setDev } from "@/lib/dev";
+import { getDev, openDevMenu, reload, setDev, toggleLists } from "@/lib/dev";
 import { Window } from "./window";
 
 type Line = { kind: "in" | "out" | "err" | "ok"; text: string };
@@ -30,7 +30,7 @@ const commands: Record<string, string> = {
 // What Metro prints when it starts, keys included.
 const metro: Line[] = [
   { kind: "ok", text: "Welcome to Metro. Fast, scalable, integrated." },
-  { kind: "out", text: "  r  reload the app\n  d  open Dev Menu\n  p  toggle Perf Monitor\n  i  toggle Element Inspector" },
+  { kind: "out", text: "  r  reload the app\n  d  open Dev Menu\n  p  toggle Perf Monitor\n  i  toggle Element Inspector\n  t  JS thread vs UI thread demo\n  l  ScrollView vs FlatList vs FlashList" },
 ];
 
 function run(input: string): Line[] | "clear" {
@@ -119,6 +119,15 @@ function run(input: string): Line[] | "clear" {
       setDev({ inspector: on });
       return [{ kind: "ok", text: `Element Inspector ${on ? "on. Esc to exit." : "off."}` }];
     }
+    case "t":
+    case "threads": {
+      const on = !getDev().threads;
+      setDev({ threads: on });
+      return [{ kind: "ok", text: on ? "Thread demo on. Block the JS thread and watch which dot stops." : "Thread demo off." }];
+    }
+    case "l":
+    case "lists":
+      return [{ kind: "ok", text: toggleLists() ? "List demo on, with the Perf Monitor. Switch to ScrollView and watch Views." : "List demo off." }];
     case "crash":
     case "throw":
       setTimeout(() => setDev({ redbox: true }), 400);

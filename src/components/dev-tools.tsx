@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { site } from "@/content";
-import { reload, setDev, useDev } from "@/lib/dev";
+import { reload, setDev, toggleLists, useDev } from "@/lib/dev";
 import { Inspector } from "./inspector";
+import { ListDemo } from "./list-demo";
 import { PerfMonitor } from "./perf-monitor";
 import { RedBox } from "./red-box";
+import { ThreadsDemo } from "./threads-demo";
 
 let greeted = false;
 
@@ -32,6 +34,8 @@ export function DevTools() {
       <DevMenu />
       <PerfMonitor />
       <Inspector />
+      <ThreadsDemo />
+      <ListDemo />
       <RedBox />
       <Bundling />
       <Toast />
@@ -70,6 +74,11 @@ function DevMenu() {
       label: dev.inspector ? "Hide Element Inspector" : "Show Element Inspector",
       run: () => setDev({ menu: false, inspector: !dev.inspector }),
     },
+    {
+      label: dev.threads ? "Hide Thread Demo" : "Block the JS Thread",
+      run: () => setDev({ menu: false, threads: !dev.threads }),
+    },
+    { label: dev.lists ? "Hide List Demo" : "Render 10,000 Rows", run: toggleLists },
     { label: "Throw a Test Error", destructive: true, run: () => setDev({ menu: false, redbox: true }) },
   ];
 

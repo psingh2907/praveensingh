@@ -12,6 +12,8 @@ import {
   Atom,
   Cursor,
   Gauge,
+  Cpu,
+  Rows,
   UserPlus,
   Copy,
   DeviceMobile,
@@ -37,7 +39,7 @@ import {
 } from "@phosphor-icons/react";
 import { projects, site } from "@/content";
 import { glassPresets, openWindow, setGlass, setWallpaper, wallpapers } from "@/lib/desktop";
-import { getDev, openDevMenu, reload, setDev } from "@/lib/dev";
+import { getDev, openDevMenu, reload, setDev, toggleLists } from "@/lib/dev";
 
 type Item = { group: string; label: string; hint?: string; keywords?: string; Icon: Icon } & (
   | { run: () => void; href?: never }
@@ -112,6 +114,8 @@ const items: Item[] = [
   { group: "Developer", label: "React Native Dev Menu", keywords: "debug developer tools metro", Icon: Atom, run: openDevMenu },
   { group: "Developer", label: "Perf Monitor", hint: "Toggle", keywords: "fps performance frame rate react native", Icon: Gauge, run: () => setDev({ perf: !getDev().perf }) },
   { group: "Developer", label: "Element Inspector", hint: "Toggle", keywords: "inspect layout box model react native", Icon: Cursor, run: () => setDev({ inspector: !getDev().inspector }) },
+  { group: "Developer", label: "JS Thread vs UI Thread", hint: "Demo", keywords: "block js thread reanimated animated worklet jank fps react native", Icon: Cpu, run: () => setDev({ threads: !getDev().threads }) },
+  { group: "Developer", label: "FlatList vs ScrollView", hint: "Demo", keywords: "flashlist virtualization 10000 rows list performance recycling react native", Icon: Rows, run: toggleLists },
   { group: "Developer", label: "Reload", hint: "Metro", keywords: "refresh bundle react native", Icon: ArrowClockwise, run: reload },
 ];
 

@@ -8,6 +8,10 @@ export type DevState = {
   menu: boolean;
   perf: boolean;
   inspector: boolean;
+  /** The JS thread vs UI thread demo. */
+  threads: boolean;
+  /** ScrollView vs FlatList vs FlashList on 10,000 rows. */
+  lists: boolean;
   redbox: boolean;
   bundling: boolean;
   /** Unlocked by tapping the build number in About seven times. */
@@ -18,6 +22,8 @@ const initial: DevState = {
   menu: false,
   perf: false,
   inspector: false,
+  threads: false,
+  lists: false,
   redbox: false,
   bundling: false,
   developer: false,
@@ -57,6 +63,13 @@ export const openDevMenu = () => setDev({ menu: true });
 
 /** Plays a Metro "Bundling…" banner, then reloads the page. */
 export const reload = () => setDev({ menu: false, redbox: false, inspector: false, bundling: true });
+
+/** Opens or closes the list demo; it comes with the Perf Monitor, whose "Views" tell the story. */
+export function toggleLists() {
+  const on = !state.lists;
+  setDev(on ? { menu: false, lists: true, perf: true } : { menu: false, lists: false });
+  return on;
+}
 
 export function toast(text: string) {
   window.dispatchEvent(new CustomEvent("mac:toast", { detail: text }));

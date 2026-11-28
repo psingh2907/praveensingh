@@ -1322,3 +1322,24 @@ html:has(.code-zoom[open]) {
     color: var(--shiki-dark);
   }
 }
+
+/* The thread demo's UI-thread dot: a transform animation the compositor runs
+   off the main thread, so it keeps moving while JavaScript is blocked. Same
+   easing (sine in-out) as the JS-driven dot beside it. */
+@keyframes thread-run {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+
+.thread-run {
+  animation: thread-run 1.6s cubic-bezier(0.37, 0, 0.63, 1) infinite alternate;
+  will-change: transform;
+}
+
+@keyframes thread-spin {
+  to { transform: rotate(360deg); }
+}
+
+.thread-spin {
+  animation: thread-spin 0.8s linear infinite;
+}
