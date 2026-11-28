@@ -1,0 +1,200 @@
+export const meta = {
+  title: "Why Reanimated exists: block the JS thread and watch which animation stops",
+  description:
+    "A live demo of React Native's two threads: one animation driven by JavaScript, one that isn't. Block the JS thread for two seconds and see why Reanimated and the native driver exist, and what they don't fix.",
+  published: "2026-11-28",
+  tags: ["React Native", "Performance", "Reanimated"],
+  platforms: ["iOS", "Android"],
+  seoTitle: "Why Reanimated exists: JS vs UI thread",
+  seoDescription:
+    "Block the JS thread in a live demo and see which animation stops. When to use Reanimated or useNativeDriver, and what a busy JS thread still breaks.",
+  mentions: [
+    { name: "React Native Reanimated", url: "https://docs.swmansion.com/react-native-reanimated/" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+  ],
+};
+
+<AtAGlance
+  problem="Animations that stutter or freeze whenever the app is busy loading, parsing or rendering"
+  fix="Run them on the UI thread: Reanimated, or Animated with useNativeDriver for transforms and opacity"
+  result="60"
+  resultLabel="frames lost for every second the JS thread is blocked at 60 Hz (120 on a 120 Hz screen)"
+/>
+
+<ShortAnswer>
+  A React Native app runs your JavaScript on one thread and draws the screen on another. An animation that JavaScript
+  moves frame by frame stops whenever that thread is busy. Reanimated, and Animated with `useNativeDriver: true`, hand
+  the animation to the UI thread, so it keeps running while JavaScript is stuck. They don't make the JS thread any
+  faster: taps, state updates and callbacks still wait for it.
+</ShortAnswer>
+
+## Try it first
+
+Both dots below run the same animation, with the same easing and timing. The top one is moved by JavaScript on every
+frame. The bottom one isn't. Press the button: it runs a two-second loop on the page's main thread, the way a big
+`JSON.parse` or a heavy re-render ties up the JS thread in an app.
+
+<ThreadsFigure caption="Live on this page. The top dot freezes, then jumps to where it should be. The bottom dot never stops." />
+
+The top dot freezes for two seconds, then jumps ahead to where it should have been. The bottom one doesn't notice.
+That's the whole reason Reanimated exists, and the rest of this post is about what's going on.
+
+<Note title="What the demo really runs">
+  A browser isn't a phone, so this is an analogy, but a close one. The top dot is moved with `requestAnimationFrame`
+  on the page's main thread, which is what Animated does without the native driver. The bottom dot is a CSS
+  transform animation, which the browser's compositor runs off the main thread, the way Reanimated runs a worklet on
+  the UI thread. The frame count comes from the gap between frames the page measured before you pressed the button.
+</Note>
+
+## Two threads, one frame budget
+
+The parts that matter for animation are:
+
+- **The JS thread.** Your components render here, your event handlers run here, and so does any animation whose
+  next value is worked out in JavaScript. There's one of it.
+- **The UI thread** (the main thread on iOS and Android). It owns the native views, takes the touches and draws each
+  frame.
+
+The New Architecture changed how the two talk: JSI calls instead of a batched JSON bridge, and Fabric for rendering.
+It didn't change the split. Your JavaScript still runs on one thread, and a long task there still blocks everything
+else that needs it.
+
+Each frame has a budget: 16.7 ms at 60 Hz, and 8.3 ms on a 120 Hz screen like a recent iPhone Pro's. If the JS thread
+is busy when a frame is due, a JS-driven animation has no new value for it. One blocked second costs 60 frames at
+60 Hz and 120 frames at 120 Hz, and the user sees a freeze followed by a jump.
+
+What ties up the JS thread in a real app is usually ordinary work:
+
+- parsing or transforming a large API response,
+- rendering a new screen while a transition plays,
+- re-rendering a big list after a state change,
+- any synchronous loop over a lot of data.
+
+Development builds make all of this slower, so measure stalls in a release build before you decide something is
+too slow.
+
+## Three ways to move a view
+
+### Animated, without the native driver
+
+```tsx title="Moved by JavaScript every frame"
+const x = useRef(new Animated.Value(0)).current;
+
+useEffect(() => {
+  Animated.loop(
+    Animated.sequence([
+      Animated.timing(x, { toValue: 200, duration: 1600, useNativeDriver: false }),
+      Animated.timing(x, { toValue: 0, duration: 1600, useNativeDriver: false }),
+    ]),
+  ).start();
+}, [x]);
+
+return <Animated.View style={{ transform: [{ translateX: x }] }} />;
+```
+
+Every frame, JavaScript works out the next value and sends it to the view. This is the top dot. It's fine while the
+JS thread is idle and it freezes the moment it isn't.
+
+### Animated, with the native driver
+
+Change `useNativeDriver` to `true` and Animated sends the whole animation to native code before it starts. From then
+on, the UI thread runs it without asking JavaScript for each frame, so it behaves like the bottom dot.
+
+The catch is what it can animate. The native driver only handles properties that don't affect layout, such as
+`transform` and `opacity`. `width`, `height`, `top`, margins and other flexbox properties aren't supported. Also, an
+animated value works with one driver only, so every animation on that value has to use the native driver.
+
+### Reanimated
+
+Reanimated runs animation code as worklets: small JavaScript functions that run on the UI thread. In Reanimated 4,
+worklets live in their own package, `react-native-worklets`, and Reanimated 4 only runs on the New Architecture.
+
+```tsx title="Reanimated: the animation runs on the UI thread"
+const x = useSharedValue(0);
+
+useEffect(() => {
+  x.value = withRepeat(withTiming(200, { duration: 1600, easing: Easing.inOut(Easing.sin) }), -1, true);
+}, [x]);
+
+const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+
+return <Animated.View style={style} />;
+```
+
+Reanimated 4 also has CSS-style animations and transitions, which are the shortest way to write a loop like this one:
+
+```tsx title="Reanimated 4: a CSS animation"
+<Animated.View
+  style={{
+    animationName: { from: { transform: [{ translateX: 0 }] }, to: { transform: [{ translateX: 200 }] } },
+    animationDuration: "1.6s",
+    animationTimingFunction: "ease-in-out",
+    animationIterationCount: "infinite",
+    animationDirection: "alternate",
+  }}
+/>
+```
+
+Compared with the native driver, Reanimated can animate any style, can react to a gesture frame by frame (with
+Gesture Handler, the gesture callbacks are worklets too), and can read values like scroll position on the UI thread.
+
+## Which one to use
+
+| You're animating | Use |
+| --- | --- |
+| `transform` or `opacity`, started from JavaScript, no gesture | Animated with `useNativeDriver: true` is enough |
+| Anything driven by a gesture or the scroll position | Reanimated, with Gesture Handler |
+| Layout properties like `height` or `width` | Reanimated, but prefer a `transform` when you can |
+| A simple loop or a state-driven transition | Reanimated 4's CSS animations and transitions |
+| Something that must never stutter, whatever JavaScript is doing | Anything that runs on the UI thread, not the JS driver |
+
+## What Reanimated doesn't fix
+
+Moving the animation off the JS thread fixes the animation, and nothing else. Press the button in the demo again and
+try to click something on the page while it runs: nothing responds until the loop ends. A phone behaves the same way:
+
+- **Taps and `onPress` still wait.** The touch arrives on the UI thread, but your handler runs in JavaScript.
+- **State updates wait.** A screen that has to re-render after the animation still renders on the JS thread.
+- **Callbacks back to JavaScript wait.** If an animation's completion calls into JavaScript, that call queues behind
+  whatever is blocking it.
+- **The UI thread can be blocked too.** A heavy worklet, or slow native work on the main thread, stops both dots. Keep
+  worklets small.
+- **Layout still costs.** Animating `height` on the UI thread still runs layout on every frame. A `transform` doesn't.
+
+So a UI-thread animation hides a busy JS thread for a moment, but it doesn't fix it. Find the long task and shorten
+it, split it up, or move it off the JS thread.
+
+## How to see it in your own app
+
+Open the Perf Monitor from the dev menu. On iOS it shows a UI frame rate and a JS frame rate side by side, so you can
+see which thread is struggling: a JS-only drop with smooth UI-thread animations means your animations are already
+in the right place, and the JS work is what to fix. Then profile the JS work itself, and confirm the result in a
+release build.
+
+## FAQ
+
+### Does the New Architecture make Reanimated unnecessary?
+
+No. The New Architecture changed how JavaScript and native code talk, but your JavaScript still runs on one thread.
+An animation that JavaScript moves every frame still stops when that thread is busy.
+
+### Is useNativeDriver as good as Reanimated?
+
+For `transform` and `opacity` animations started from JavaScript, it also runs on the UI thread and keeps going while
+JavaScript is blocked. It can't animate layout properties and can't follow a gesture frame by frame in a worklet,
+which is where Reanimated is needed.
+
+### Why does the frozen animation jump instead of picking up where it stopped?
+
+Timing animations work out each frame's value from the clock. When the JS thread comes back, the next value is the one
+for the current time, so the view jumps to where it should already be.
+
+<Takeaways
+  items={[
+    "React Native runs your JavaScript on one thread and draws the screen on another.",
+    "An animation that JavaScript moves every frame freezes, then jumps, whenever that thread is busy.",
+    "useNativeDriver moves transform and opacity animations to the UI thread; Reanimated does it for any style and for gestures.",
+    "Taps, state updates and callbacks still wait for the JS thread, so fix the long task too.",
+    "Watch JS and UI frame rates separately in the Perf Monitor, and judge in a release build.",
+  ]}
+/>
