@@ -64,7 +64,7 @@ export function ListDemo() {
   return <AnimatePresence>{lists && <Panel key="lists" />}</AnimatePresence>;
 }
 
-function Panel() {
+function Demo() {
   const [mode, setMode] = useState<Mode>("flatlist");
   const [top, setTop] = useState(0);
   const [height, setHeight] = useState(300);
@@ -76,9 +76,6 @@ function Panel() {
   const onMount = useCallback(() => {
     mounted.current++;
   }, []);
-  const bounds = useRef<HTMLDivElement>(null);
-  const drag = useDragControls();
-  const reduce = useReducedMotion();
 
   // Render and commit time of the last switch, measured from the tap.
   useLayoutEffect(() => {
@@ -107,6 +104,9 @@ function Panel() {
     if (next === mode) return;
     started.current = at;
     mounted.current = 0;
+    // ScrollView mode doesn't track the scroll position (it would re-render
+    // 10,000 rows per scroll event), so pick it up from the list here.
+    setTop(list.current?.scrollTop ?? 0);
     setMode(next);
   }
 
@@ -145,6 +145,58 @@ function Panel() {
 
   return (
     <>
+    <div role="radiogroup" aria-label="List component" className="m-2 grid grid-cols-3 gap-0.5 rounded-lg bg-white/10 p-0.5">
+      {modes.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          role="radio"
+          aria-checked={mode === m.id}
+          onClick={(e) => choose(m.id, e.timeStamp)}
+          className={`rounded-md px-1 py-1.5 outline-none transition-colors focus-visible:ring-1 focus-visible:ring-white/60 ${
+            mode === m.id ? "bg-white/25 font-semibold" : "text-white/70 hover:bg-white/10"
+          }`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+
+    <div
+      ref={list}
+      onScroll={(e) => {
+        if (mode !== "scrollview") setTop(e.currentTarget.scrollTop);
+      }}
+      className="h-[min(300px,38vh)] overflow-y-auto overscroll-contain border-y border-white/15"
+    >
+      {body}
+    </div>
+
+    <div className="flex justify-between gap-2 px-3 py-2">
+      {stat("Rows", rendered.toLocaleString("en-US"), mode === "scrollview")}
+      {stat("Views", stats.views.toLocaleString("en-US"), mode === "scrollview")}
+      {stat("Mounted", stats.mounts.toLocaleString("en-US"))}
+      {stat("Render", took === undefined ? "…" : `${Math.round(took)} ms`, (took ?? 0) > 100)}
+    </div>
+
+    <p aria-live="polite" className="border-t border-white/15 px-3 py-2 text-[10px] leading-snug text-white/60">
+      {modes.find((m) => m.id === mode)!.note}{" "}
+      {mode === "flashlist"
+        ? "Scroll: “Mounted” barely moves."
+        : mode === "flatlist"
+          ? "Scroll fast and watch “Mounted” climb."
+          : "Switching to it blocks the thread while they mount."}
+    </p>
+    </>
+  );
+}
+
+function Panel() {
+  const bounds = useRef<HTMLDivElement>(null);
+  const drag = useDragControls();
+  const reduce = useReducedMotion();
+  return (
+    <>
       <div ref={bounds} aria-hidden className="pointer-events-none fixed inset-x-2 bottom-2 top-10" />
       <motion.section
         data-inspector
@@ -179,49 +231,26 @@ function Panel() {
           </button>
         </header>
 
-        <div role="radiogroup" aria-label="List component" className="m-2 grid grid-cols-3 gap-0.5 rounded-lg bg-white/10 p-0.5">
-          {modes.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              role="radio"
-              aria-checked={mode === m.id}
-              onClick={(e) => choose(m.id, e.timeStamp)}
-              className={`rounded-md px-1 py-1.5 outline-none transition-colors focus-visible:ring-1 focus-visible:ring-white/60 ${
-                mode === m.id ? "bg-white/25 font-semibold" : "text-white/70 hover:bg-white/10"
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-
-        <div
-          ref={list}
-          onScroll={(e) => {
-            if (mode !== "scrollview") setTop(e.currentTarget.scrollTop);
-          }}
-          className="h-[min(300px,38vh)] overflow-y-auto overscroll-contain border-y border-white/15"
-        >
-          {body}
-        </div>
-
-        <div className="flex justify-between gap-2 px-3 py-2">
-          {stat("Rows", rendered.toLocaleString("en-US"), mode === "scrollview")}
-          {stat("Views", stats.views.toLocaleString("en-US"), mode === "scrollview")}
-          {stat("Mounted", stats.mounts.toLocaleString("en-US"))}
-          {stat("Render", took === undefined ? "…" : `${Math.round(took)} ms`, (took ?? 0) > 100)}
-        </div>
-
-        <p aria-live="polite" className="border-t border-white/15 px-3 py-2 text-[10px] leading-snug text-white/60">
-          {modes.find((m) => m.id === mode)!.note}{" "}
-          {mode === "flashlist"
-            ? "Scroll: “Mounted” barely moves."
-            : mode === "flatlist"
-              ? "Scroll fast and watch “Mounted” climb."
-              : "Switching to it blocks the thread while they mount."}
-        </p>
+        <Demo />
       </motion.section>
     </>
+  );
+}
+
+/**
+ * The same demo inline, for a blog post: the switch, the list and the
+ * numbers, with a caption under it.
+ */
+export function ListFigure({ caption }: { caption?: string }) {
+  return (
+    <figure className="not-prose my-8">
+      <div className="mx-auto max-w-md overflow-hidden rounded-xl bg-[#1c1c1e] font-mono text-[12px] text-white shadow-[0_8px_30px_rgb(0_0_0/0.18)]">
+        <p className="border-b border-white/15 px-3 py-2 text-[9px] uppercase tracking-wider text-white/50">
+          10,000 rows, three ways · live
+        </p>
+        <Demo />
+      </div>
+      {caption && <figcaption className="mx-auto mt-3 max-w-md text-center text-sm text-muted">{caption}</figcaption>}
+    </figure>
   );
 }

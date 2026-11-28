@@ -2,6 +2,7 @@ import type { MDXComponents } from "mdx/types";
 import Link from "next/link";
 import { AtAGlance, FlowDiagram, Gotcha, MergeDiagram, Note, ShortAnswer, Takeaways } from "@/blog/components";
 import { CodeFigure } from "@/blog/code-figure";
+import { ListFigure } from "@/components/list-demo";
 import { ThreadsFigure } from "@/components/threads-demo";
 
 // How Markdown in blog posts renders (required by @next/mdx). Typography is
@@ -28,6 +29,7 @@ const components: MDXComponents = {
   AtAGlance,
   FlowDiagram,
   Gotcha,
+  ListFigure,
   MergeDiagram,
   Note,
   ShortAnswer,

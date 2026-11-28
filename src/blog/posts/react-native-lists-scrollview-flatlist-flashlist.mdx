@@ -1,0 +1,147 @@
+export const meta = {
+  title: "What a React Native list actually renders: ScrollView, FlatList and FlashList, live with 10,000 rows",
+  description:
+    "The same 10,000-row list rendered three ways, live on the page. Count the rows, views and mounts each one costs, and see why FlatList windows and FlashList recycles.",
+  published: "2026-11-28",
+  tags: ["React Native", "Performance", "FlashList"],
+  platforms: ["iOS", "Android"],
+  seoTitle: "ScrollView vs FlatList vs FlashList, live",
+  seoDescription:
+    "One 10,000-row list rendered three ways, live: how many rows, views and mounts ScrollView, FlatList and FlashList each cost, and when to use which.",
+  mentions: [
+    { name: "FlashList", url: "https://shopify.github.io/flash-list/" },
+    { name: "React Native", url: "https://reactnative.dev/" },
+  ],
+};
+
+<AtAGlance
+  problem="Long lists that take seconds to open, drop frames or show blank rows when you scroll"
+  fix="Render only what's near the screen (FlatList), and reuse those rows instead of rebuilding them (FlashList)"
+  result="10,000 → 18"
+  resultLabel="rows on screen in the demo below: ScrollView vs FlashList, same list"
+/>
+
+<ShortAnswer>
+  A ScrollView renders every row you give it. A FlatList renders a window of rows around the screen and mounts new ones
+  as you scroll. A FlashList keeps a small pool of rows and hands them new data as they scroll off. In the demo below,
+  that's 10,000 rows, then about 119, then 18. Use a ScrollView only for short content, and FlashList for long or
+  heavy lists.
+</ShortAnswer>
+
+## Try it
+
+This is one list of 10,000 rows, rendered the way each component renders it. Switch between them and scroll. The
+numbers under the list update as you go.
+
+<ListFigure caption="Live on this page. Rows: rows rendered right now. Views: elements in the list. Mounted: rows created since you switched. Render: how long the switch took." />
+
+Open it on ScrollView and the page stalls for a moment while 10,000 rows mount. Switch to FlatList and scroll fast:
+"Mounted" climbs with every screen. Switch to FlashList and scroll as far as you like: "Mounted" stays at 18.
+
+<Note title="What the demo really runs">
+  It's a browser, not a phone, so the numbers are for a web page, but each mode follows the same rules as the React
+  Native component. FlatList mode uses FlatList's default window of 21 screens. FlashList mode keeps a fixed pool of
+  rows with a 250 px draw distance past each edge and reuses them by slot. "Views" counts DOM elements, the browser's
+  version of native views. The numbers below are from a production build on my Mac, three runs each.
+</Note>
+
+## What I measured
+
+| | Rows rendered | Views | Mounts after scrolling 1,000 rows | Time to switch to it |
+| --- | --- | --- | --- | --- |
+| ScrollView | 10,000 | 60,000 | none: all 10,000 mounted up front | 276–391 ms |
+| FlatList | 63 at the top, 119 mid-list | 379–715 | about 1,050 | 33–38 ms |
+| FlashList | 18 | 109 | 0 (still the first 18) | 2–8 ms |
+
+The times will differ on your machine and much more on a phone. What carries over is the shape: ScrollView's cost
+grows with the length of the list, FlatList's grows with how far you scroll, and FlashList's stays flat.
+
+## ScrollView: everything, up front
+
+A ScrollView doesn't know it holds a list. It renders every child you pass it, on screen or not, and keeps all of
+them mounted. With 10,000 rows of six views each, that's 60,000 views before the user sees anything.
+
+That's fine for a settings screen, a form or a list you know stays short. It's the wrong tool for anything that can
+grow, such as a feed, search results or a long checklist. The cost of the first render grows with every item, and
+all of it runs on the JS thread while the screen waits.
+
+## FlatList: a window around the screen
+
+FlatList virtualizes. By default, `windowSize` is 21: the visible screen plus 10 screens above and 10 below. Rows
+outside the window aren't rendered. In the demo that's 63 rows at the top of the list, where there's nothing above,
+and about 119 in the middle.
+
+As you scroll, the window moves. Rows that leave it unmount, and rows that enter it mount from scratch. Scrolling
+1,000 rows down mounted about 1,050 rows in the demo: roughly one new row for every row scrolled past. Each of those
+mounts is a full render of the row on the JS thread.
+
+That's where FlatList's familiar problems come from:
+
+- **Blank rows when scrolling fast.** If you scroll faster than the JS thread can mount rows, you reach parts of the
+  list that haven't rendered yet. (If the JS thread is busy with something else, it's worse; [why Reanimated
+  exists](/blog/reanimated-js-thread-ui-thread) shows what a blocked JS thread does.)
+- **Work that grows with scrolling.** A long session in a feed mounts thousands of rows, each paying the full cost of
+  its first render.
+
+The real FlatList also renders in batches (`initialNumToRender` is 10 by default, then `maxToRenderPerBatch` rows at a
+time), so its first screen appears faster than the demo's, and the rest of the window fills in after. The demo
+renders the whole window at once, which makes the window's size easier to see.
+
+## FlashList: a pool of rows, reused
+
+FlashList renders a little past the edges of the screen, then stops creating rows. When a row scrolls off one end, it
+gets the data for the row coming on at the other end and is moved there. Its views stay; only its props change.
+
+In the demo the pool is 18 rows, and that's still the number mounted after scrolling 1,000 rows or all 10,000.
+Updating an existing row with new data is much cheaper than mounting a new one, which is why FlashList scrolls
+smoothly through lists that make FlatList show blank space.
+
+Two things come with recycling:
+
+- **Rows of different shapes need their own pools.** If a header gets recycled into a photo row, almost everything in
+  it has to change. FlashList's `getItemType` keeps a pool per type.
+- **Local state moves with the row.** A recycled row keeps its `useState` values, so state from one item can show up
+  on another. FlashList v2's `useRecyclingState` resets it when the item changes.
+
+I covered both, and the rest of a real migration, in [moving long checklists from FlatList to FlashList
+v2](/blog/flashlist-checklist-scroll-jank). FlashList v2 runs on the New Architecture only.
+
+## Which one to use
+
+| Your content | Use |
+| --- | --- |
+| A screen of fixed content, a form, a list that stays at a few dozen short rows | ScrollView |
+| A long list where the rows are cheap and you'd rather not add a dependency | FlatList, with its props tuned |
+| A long or growing list, heavy rows, or rows of different kinds | FlashList |
+
+Whichever you use, keep each row cheap to render, and judge scrolling in a release build. Development builds are
+much slower and will make any list look worse than it is.
+
+## FAQ
+
+### Is FlatList bad?
+
+No. FlatList's window is a big improvement over a ScrollView, and for many lists it's enough. It mounts a new row for
+every row you scroll past, so it struggles when rows are heavy or users scroll fast through long lists. That's where
+FlashList's recycling helps.
+
+### Why does FlashList render so few rows?
+
+It only needs enough rows to cover the screen plus a small margin past each edge. Instead of creating more as you
+scroll, it reuses the ones that left the screen. The demo uses a 250 px margin, which needs 18 rows of 52 px.
+
+### Should I put a FlatList inside a ScrollView?
+
+Avoid it. A FlatList inside a vertical ScrollView can't tell which of its rows are on screen, so it loses its
+virtualization and renders more than it should. Use the list's `ListHeaderComponent` and `ListFooterComponent` for
+content above and below it instead.
+
+<Takeaways
+  items={[
+    "ScrollView renders every row up front: 10,000 rows and 60,000 views in the demo.",
+    "FlatList renders a window of 21 screens and mounts a new row for each row you scroll past.",
+    "FlashList keeps a small pool of rows and reuses them: 18 rows, however far you scroll.",
+    "Recycled rows keep their local state, so reset it with useRecyclingState and give different rows their own type.",
+    "Judge list performance in a release build, not in development.",
+  ]}
+/>
